@@ -12,27 +12,26 @@
     <div>
         <div>
             <h3>Login Form</h3>
-
         </div>
         <div>
             <form action="/api/login" method="post">
-              <label for="email">Your Email:</label><br>
-  <input type="email" id="email" name="email" required><br>
+                <label for="email">Your Email:</label><br>
+                <input type="email" id="email" name="email" required><br><br>
 
+                <label for="userPassword">Password:</label><br>
+                <input type="password" id="userPassword" name="password" required><br><br>
 
-  <label for="userPassword">Password:</label><br>
-  <input type="password" id="userPassword" name="userPassword" required><br>
+                <label for="userRole">Login as:</label><br>
+                <select name="role" id="userRole" required>
+                    <option value="" disabled selected>Select Role</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="staff">Staff</option>
+                </select><br><br>
 
-  <label for="userRole">Login as:</label><br>
-  <select name="role" id="userRole" required>
-    <option value="" disabled selected>Select Role</option>
-    <option value="user">User</option>
-    <option value="admin">Admin</option>
-    <option value="staff">Staff</option>
-  </select><br><br>
-
-  <input type="submit" value="Login">
+                <input type="submit" value="Login">
             </form>
-     
+        </div>
+    </div>
 </body>
 </html>
