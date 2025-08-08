@@ -1,15 +1,13 @@
-// Mobile Menu Toggle and Responsive Background Management
+// Enhanced Homepage JavaScript with Improved Animations and Interactions
 document.addEventListener('DOMContentLoaded', function() {
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const mobileNav = document.getElementById('mobileNav');
     const hamburger = document.getElementById('hamburger');
 
+    // Enhanced Mobile Menu Toggle
     if (mobileMenuBtn && mobileNav && hamburger) {
         mobileMenuBtn.addEventListener('click', function() {
-            // Toggle mobile menu visibility
             mobileNav.classList.toggle('active');
-            
-            // Toggle hamburger animation
             hamburger.classList.toggle('active');
         });
 
@@ -34,8 +32,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Responsive Animated Background Manager
-    class ResponsiveBackgroundManager {
+    // Enhanced Animated Background Manager
+    class EnhancedBackgroundManager {
         constructor() {
             this.particlesContainer = document.getElementById('backgroundParticles');
             this.particles = [];
@@ -93,11 +91,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const height = window.innerHeight;
             const area = width * height;
             
-            // Responsive particle count based on screen size and device capability
-            if (width < 480) return Math.min(8, Math.floor(area / 50000)); // Mobile
-            if (width < 768) return Math.min(12, Math.floor(area / 40000)); // Tablet
-            if (width < 1024) return Math.min(16, Math.floor(area / 35000)); // Small desktop
-            return Math.min(20, Math.floor(area / 30000)); // Large desktop
+            // Enhanced responsive particle count
+            if (width < 480) return Math.min(15, Math.floor(area / 50000)); // Mobile
+            if (width < 768) return Math.min(20, Math.floor(area / 40000)); // Tablet
+            if (width < 1024) return Math.min(25, Math.floor(area / 35000)); // Small desktop
+            return Math.min(30, Math.floor(area / 30000)); // Large desktop
         }
         
         createParticles() {
@@ -115,44 +113,44 @@ document.addEventListener('DOMContentLoaded', function() {
             const particle = document.createElement('div');
             particle.className = 'particle';
             
-            // Responsive particle properties
             const width = window.innerWidth;
             const height = window.innerHeight;
             
-            // Size based on screen size
+            // Enhanced size based on screen size
             let size;
             if (width < 480) {
-                size = Math.random() * 2 + 1; // 1-3px on mobile
+                size = Math.random() * 3 + 2; // 2-5px on mobile
             } else if (width < 768) {
-                size = Math.random() * 3 + 1; // 1-4px on tablet
+                size = Math.random() * 4 + 2; // 2-6px on tablet
             } else {
-                size = Math.random() * 4 + 2; // 2-6px on desktop
+                size = Math.random() * 5 + 3; // 3-8px on desktop
             }
             
-            // Color variations
+            // Enhanced color variations with lighter tones
             const colors = [
-                '#3b82f6', '#8b5cf6', '#10b981', 
-                '#f59e0b', '#ef4444', '#06b6d4',
-                '#ec4899', '#84cc16'
+                '#4299e1', '#48bb78', '#9f7aea', '#ed8936', 
+                '#f56565', '#38b2ac', '#ed64a6', '#9ae6b4',
+                '#667eea', '#764ba2', '#f093fb', '#4facfe'
             ];
             
-            // Particle properties
             const particleData = {
                 element: particle,
                 x: Math.random() * width,
                 y: Math.random() * height,
-                vx: (Math.random() - 0.5) * (width < 768 ? 0.3 : 0.5),
-                vy: (Math.random() - 0.5) * (width < 768 ? 0.3 : 0.5),
+                vx: (Math.random() - 0.5) * (width < 768 ? 0.4 : 0.6),
+                vy: (Math.random() - 0.5) * (width < 768 ? 0.4 : 0.6),
                 size: size,
                 color: colors[Math.floor(Math.random() * colors.length)],
-                opacity: Math.random() * 0.4 + 0.2,
+                opacity: Math.random() * 0.5 + 0.4,
                 rotationSpeed: (Math.random() - 0.5) * 2,
                 rotation: 0,
                 life: Math.random() * 100,
-                maxLife: 200 + Math.random() * 100
+                maxLife: 200 + Math.random() * 150,
+                pulseSpeed: Math.random() * 2 + 1,
+                pulseOffset: Math.random() * Math.PI * 2
             };
             
-            // Apply styles
+            // Enhanced styling
             Object.assign(particle.style, {
                 position: 'absolute',
                 width: `${particleData.size}px`,
@@ -162,7 +160,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 opacity: particleData.opacity,
                 transform: `translate(${particleData.x}px, ${particleData.y}px)`,
                 pointerEvents: 'none',
-                willChange: 'transform, opacity'
+                willChange: 'transform, opacity',
+                boxShadow: `0 0 ${particleData.size * 2}px ${particleData.color}40`,
+                filter: 'blur(0.5px)'
             });
             
             this.particlesContainer.appendChild(particle);
@@ -172,11 +172,12 @@ document.addEventListener('DOMContentLoaded', function() {
         updateParticles(deltaTime) {
             const width = window.innerWidth;
             const height = window.innerHeight;
+            const time = performance.now() * 0.001;
             
             this.particles.forEach((particle, index) => {
-                // Update position
+                // Enhanced movement with wave motion
                 particle.x += particle.vx * deltaTime * 0.1;
-                particle.y += particle.vy * deltaTime * 0.1;
+                particle.y += particle.vy * deltaTime * 0.1 + Math.sin(time * particle.pulseSpeed + particle.pulseOffset) * 0.5;
                 particle.rotation += particle.rotationSpeed * deltaTime * 0.1;
                 particle.life += deltaTime * 0.01;
                 
@@ -186,16 +187,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (particle.y < -particle.size) particle.y = height + particle.size;
                 if (particle.y > height + particle.size) particle.y = -particle.size;
                 
-                // Opacity variation
+                // Enhanced opacity variation with pulsing
                 const lifeProgress = particle.life / particle.maxLife;
-                let opacity = particle.opacity;
+                const pulse = Math.sin(time * particle.pulseSpeed + particle.pulseOffset) * 0.3 + 0.7;
+                let opacity = particle.opacity * pulse;
                 
                 if (lifeProgress > 0.8) {
                     opacity *= (1 - (lifeProgress - 0.8) * 5);
                 }
                 
-                // Apply transform with better performance
-                const transform = `translate(${particle.x}px, ${particle.y}px) rotate(${particle.rotation}deg)`;
+                // Enhanced transform with scale pulsing
+                const scale = 0.8 + pulse * 0.4;
+                const transform = `translate(${particle.x}px, ${particle.y}px) rotate(${particle.rotation}deg) scale(${scale})`;
                 particle.element.style.transform = transform;
                 particle.element.style.opacity = Math.max(0, opacity);
                 
@@ -204,8 +207,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     particle.x = Math.random() * width;
                     particle.y = Math.random() * height;
                     particle.life = 0;
-                    particle.vx = (Math.random() - 0.5) * (width < 768 ? 0.3 : 0.5);
-                    particle.vy = (Math.random() - 0.5) * (width < 768 ? 0.3 : 0.5);
+                    particle.vx = (Math.random() - 0.5) * (width < 768 ? 0.4 : 0.6);
+                    particle.vy = (Math.random() - 0.5) * (width < 768 ? 0.4 : 0.6);
+                    particle.pulseOffset = Math.random() * Math.PI * 2;
                 }
             });
         }
@@ -216,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const deltaTime = currentTime - this.lastTime;
             this.lastTime = currentTime;
             
-            // Throttle animation to 30fps on mobile for better performance
+            // Adaptive frame rate
             const targetFPS = window.innerWidth < 768 ? 30 : 60;
             const frameDuration = 1000 / targetFPS;
             
@@ -251,7 +255,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         handleResize() {
-            // Recreate particles with new count for new screen size
             this.createParticles();
         }
         
@@ -261,10 +264,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Initialize responsive background manager
-    const backgroundManager = new ResponsiveBackgroundManager();
+    // Initialize enhanced background manager
+    const backgroundManager = new EnhancedBackgroundManager();
 
-    // Smooth scrolling for anchor links
+    // Enhanced smooth scrolling for anchor links
     const anchorLinks = document.querySelectorAll('a[href^="#"]');
     anchorLinks.forEach(function(link) {
         link.addEventListener('click', function(e) {
@@ -275,31 +278,54 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (targetElement) {
                 const headerHeight = document.querySelector('.header').offsetHeight;
-                const targetPosition = targetElement.offsetTop - headerHeight;
+                const targetPosition = targetElement.offsetTop - headerHeight - 20;
                 
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
+                // Enhanced smooth scrolling with easing
+                const startPosition = window.pageYOffset;
+                const distance = targetPosition - startPosition;
+                const duration = Math.min(Math.abs(distance) * 0.5, 1000);
+                let start = null;
+
+                function step(timestamp) {
+                    if (!start) start = timestamp;
+                    const progress = Math.min((timestamp - start) / duration, 1);
+                    
+                    // Easing function for smoother animation
+                    const ease = progress < 0.5 
+                        ? 4 * progress * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                    
+                    window.scrollTo(0, startPosition + distance * ease);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    }
+                }
+                
+                requestAnimationFrame(step);
             }
         });
     });
 
-    // Enhanced scroll effects for header
+    // Enhanced header effects with scroll
     const header = document.querySelector('.header');
     let lastScrollTop = 0;
     let ticking = false;
 
     function updateHeader() {
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollProgress = Math.min(scrollTop / 200, 1);
         
-        if (scrollTop > 100) {
-            header.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-            header.style.backdropFilter = 'blur(12px)';
-        } else {
-            header.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-            header.style.backdropFilter = 'blur(8px)';
-        }
+        // Enhanced backdrop blur and shadow based on scroll
+        const blurAmount = 8 + (scrollProgress * 8);
+        const shadowOpacity = 0.06 + (scrollProgress * 0.1);
+        
+        header.style.backdropFilter = `blur(${blurAmount}px)`;
+        header.style.boxShadow = `0 1px 3px 0 rgba(0, 0, 0, ${shadowOpacity})`;
+        
+        // Add background opacity change
+        const bgOpacity = 0.95 + (scrollProgress * 0.05);
+        header.style.backgroundColor = `rgba(255, 255, 255, ${bgOpacity})`;
         
         lastScrollTop = scrollTop;
         ticking = false;
@@ -312,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Intersection observer for animations with better performance
+    // Enhanced intersection observer for animations
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -324,28 +350,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 entry.target.style.opacity = '1';
                 entry.target.style.transform = 'translateY(0)';
                 
-                // Unobserve after animation to improve performance
+                // Add staggered animation for children if they exist
+                const children = entry.target.querySelectorAll('.feature-card, .role-card');
+                children.forEach((child, index) => {
+                    setTimeout(() => {
+                        child.style.opacity = '1';
+                        child.style.transform = 'translateY(0)';
+                    }, index * 100);
+                });
+                
                 observer.unobserve(entry.target);
             }
         });
     }, observerOptions);
 
-    // Observe elements for animation with staggered delays
-    const animatedElements = document.querySelectorAll('.feature-card, .role-card');
+    // Observe elements for animation with better selectors
+    const animatedElements = document.querySelectorAll('.features, .user-roles, .cta-section');
     animatedElements.forEach(function(element, index) {
         element.style.opacity = '0';
-        element.style.transform = 'translateY(20px)';
-        element.style.transition = `opacity 0.6s ease-out ${index * 0.1}s, transform 0.6s ease-out ${index * 0.1}s`;
+        element.style.transform = 'translateY(30px)';
+        element.style.transition = `opacity 0.8s ease-out ${index * 0.2}s, transform 0.8s ease-out ${index * 0.2}s`;
         observer.observe(element);
     });
 
-    // Enhanced counter animation with better performance
+    // Enhanced counter animation with better easing
     function animateCounters() {
         const counters = document.querySelectorAll('.stat-number');
         
         counters.forEach(function(counter) {
             const target = parseInt(counter.getAttribute('data-target'));
-            const duration = 2000; // 2 seconds
+            const duration = 2500; // Longer duration for smoother animation
             const frameDuration = 1000 / 60; // 60fps
             const totalFrames = Math.round(duration / frameDuration);
             let frame = 0;
@@ -353,13 +387,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const timer = setInterval(function() {
                 frame++;
                 const progress = frame / totalFrames;
-                const easeOutProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+                
+                // Enhanced easing function (ease-out-cubic)
+                const easeOutProgress = 1 - Math.pow(1 - progress, 3);
                 const current = Math.round(target * easeOutProgress);
                 
+                // Format numbers with appropriate suffixes
                 if (target === 500) {
-                    counter.textContent = current + '+';
+                    counter.textContent = current.toLocaleString() + '+';
                 } else if (target === 1200) {
-                    counter.textContent = current + '+';
+                    counter.textContent = current.toLocaleString() + '+';
                 } else if (target === 24) {
                     counter.textContent = current + 'hrs';
                 }
@@ -375,13 +412,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Trigger counter animation when stats section is visible
+    // Enhanced stats animation trigger
     const statsSection = document.querySelector('.stats-grid');
     if (statsSection) {
         const statsObserver = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (entry.isIntersecting) {
-                    animateCounters();
+                    setTimeout(() => {
+                        animateCounters();
+                    }, 300); // Delay for better visual effect
                     statsObserver.unobserve(entry.target);
                 }
             });
@@ -390,13 +429,11 @@ document.addEventListener('DOMContentLoaded', function() {
         statsObserver.observe(statsSection);
     }
 
-    // Enhanced button interactions
+    // Enhanced button interactions with ripple effects
     const buttons = document.querySelectorAll('.btn');
     buttons.forEach(function(button) {
         button.addEventListener('click', function(e) {
-            const buttonText = this.textContent.trim();
-            
-            // Add ripple effect
+            // Create ripple effect
             const ripple = document.createElement('span');
             const rect = this.getBoundingClientRect();
             const size = Math.max(rect.width, rect.height);
@@ -406,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ripple.style.cssText = `
                 position: absolute;
                 border-radius: 50%;
-                background: rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.4);
                 transform: scale(0);
                 animation: ripple 0.6s linear;
                 width: ${size}px;
@@ -414,47 +451,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 left: ${x}px;
                 top: ${y}px;
                 pointer-events: none;
+                z-index: 1;
             `;
             
             this.style.position = 'relative';
             this.style.overflow = 'hidden';
             this.appendChild(ripple);
             
+            // Enhanced button feedback
+            this.style.transform = 'scale(0.98)';
+            setTimeout(() => { 
+                this.style.transform = ''; 
+            }, 150);
+            
             setTimeout(() => {
                 if (ripple.parentNode) {
                     ripple.parentNode.removeChild(ripple);
                 }
             }, 600);
-            
-            // Handle different button actions
-            if (buttonText.includes('Report an Issue')) {
-                console.log('Redirecting to complaint form...');
-                this.style.transform = 'scale(0.95)';
-                setTimeout(() => { this.style.transform = ''; }, 150);
-            } else if (buttonText.includes('Track Complaints')) {
-                console.log('Redirecting to complaint tracking...');
-            } else if (buttonText.includes('Sign In')) {
-                console.log('Opening sign in modal...');
-            } else if (buttonText.includes('Get Started')) {
-                console.log('Redirecting to signup page...');
-                window.location.href = 'signup.html';
-            }
+        });
+        
+        // Enhanced hover effects
+        button.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+            this.style.transform = '';
         });
     });
 
-    // Add ripple animation CSS
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes ripple {
-            to {
-                transform: scale(4);
-                opacity: 0;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-
-    // Add enhanced hover effects for cards with throttling
+    // Enhanced card hover effects
     const cards = document.querySelectorAll('.feature-card, .role-card');
     let hoverTimeout;
     
@@ -462,14 +489,29 @@ document.addEventListener('DOMContentLoaded', function() {
         card.addEventListener('mouseenter', function() {
             clearTimeout(hoverTimeout);
             this.style.transform = 'translateY(-8px) scale(1.02)';
-            this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            this.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+            
+            // Add glow effect
+            this.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(66, 153, 225, 0.1)';
         });
         
         card.addEventListener('mouseleave', function() {
             hoverTimeout = setTimeout(() => {
                 this.style.transform = 'translateY(0) scale(1)';
+                this.style.boxShadow = '';
             }, 50);
         });
+    });
+
+    // Enhanced parallax effect for hero background
+    window.addEventListener('scroll', function() {
+        const scrolled = window.pageYOffset;
+        const heroBackground = document.querySelector('.hero-background');
+        
+        if (heroBackground && scrolled < window.innerHeight) {
+            const rate = scrolled * -0.3;
+            heroBackground.style.transform = `translateY(${rate}px)`;
+        }
     });
 
     // Performance monitoring and cleanup
@@ -479,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Add resize handler for responsive behavior
+    // Enhanced resize handler
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
@@ -490,45 +532,88 @@ document.addEventListener('DOMContentLoaded', function() {
                 hamburger.classList.remove('active');
             }
             
-            // Update header backdrop filter on resize
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            if (scrollTop > 100) {
-                header.style.backdropFilter = 'blur(12px)';
-            }
+            // Update header effects
+            updateHeader();
         }, 250);
     });
 
-    // Keyboard navigation support
+    // Enhanced keyboard navigation support
     document.addEventListener('keydown', function(e) {
         // ESC key closes mobile menu
         if (e.key === 'Escape') {
-            const mobileNav = document.getElementById('mobileNav');
-            const hamburger = document.getElementById('hamburger');
             if (mobileNav && mobileNav.classList.contains('active')) {
                 mobileNav.classList.remove('active');
                 hamburger.classList.remove('active');
             }
         }
         
-        // Enter key on buttons triggers click
+        // Enhanced Enter key handling
         if (e.key === 'Enter' && e.target.classList.contains('btn')) {
             e.target.click();
         }
+        
+        // Arrow key navigation for cards
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            const focusableCards = document.querySelectorAll('.feature-card, .role-card');
+            const currentIndex = Array.from(focusableCards).indexOf(document.activeElement);
+            
+            if (currentIndex !== -1) {
+                e.preventDefault();
+                const nextIndex = e.key === 'ArrowDown' 
+                    ? Math.min(currentIndex + 1, focusableCards.length - 1)
+                    : Math.max(currentIndex - 1, 0);
+                
+                focusableCards[nextIndex].focus();
+            }
+        }
     });
 
-    console.log('OneStep Urban Solve - Enhanced responsive homepage loaded successfully');
+    // Add CSS for ripple animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .feature-card, .role-card {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .feature-card:focus, .role-card:focus {
+            outline: 2px solid #4299e1;
+            outline-offset: 2px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    console.log('OneStep Urban Solve - Enhanced homepage loaded successfully');
 });
 
-// Utility functions with better error handling
+// Enhanced utility functions
 function scrollToTop() {
-    try {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-    } catch (e) {
-        window.scrollTo(0, 0);
+    const startPosition = window.pageYOffset;
+    const duration = Math.min(startPosition * 0.5, 1000);
+    let start = null;
+
+    function step(timestamp) {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        
+        // Smooth easing
+        const ease = 1 - Math.pow(1 - progress, 3);
+        
+        window.scrollTo(0, startPosition * (1 - ease));
+        
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        }
     }
+    
+    requestAnimationFrame(step);
 }
 
 function validateEmail(email) {
@@ -545,7 +630,7 @@ function formatPhoneNumber(phone) {
     return phone;
 }
 
-// Lazy loading for better performance
+// Lazy loading enhancement
 function addLazyLoading() {
     const images = document.querySelectorAll('img[data-src]');
     
@@ -559,6 +644,8 @@ function addLazyLoading() {
                     imageObserver.unobserve(img);
                 }
             });
+        }, {
+            rootMargin: '50px 0px'
         });
         
         images.forEach(function(img) {
@@ -572,15 +659,19 @@ function addLazyLoading() {
     }
 }
 
-// Service Worker registration for PWA capabilities (optional)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js')
-            .then(function(registration) {
-                console.log('SW registered: ', registration);
-            })
-            .catch(function(registrationError) {
-                console.log('SW registration failed: ', registrationError);
-            });
+// Enhanced performance monitoring
+if ('PerformanceObserver' in window) {
+    const perfObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+            if (entry.entryType === 'largest-contentful-paint') {
+                console.log('LCP:', entry.startTime);
+            }
+        }
     });
+    
+    try {
+        perfObserver.observe({ entryTypes: ['largest-contentful-paint'] });
+    } catch (e) {
+        // Silently handle unsupported browsers
+    }
 }
