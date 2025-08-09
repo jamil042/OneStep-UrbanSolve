@@ -12,16 +12,18 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Add debugging middleware (moved before static files)
+// Enhanced debugging middleware
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url} - Body:`, req.body);
+    console.log(`\n=== ${new Date().toISOString()} ===`);
+    console.log(`${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('====================\n');
     next();
 });
 
-// Serve static files from public directory
+// Serve static files
 app.use(express.static('public'));
-
-// If your HTML files are in the root directory, also serve them
 app.use(express.static('.'));
 
 // API routes
@@ -43,12 +45,13 @@ app.get('/signup', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error: ' + err.message });
 });
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
+    console.log('404 - Route not found:', req.url);
+    res.status(404).json({ error: 'Route not found: ' + req.url });
 });
 
 app.listen(PORT, () => {
