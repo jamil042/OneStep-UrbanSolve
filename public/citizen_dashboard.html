@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneStep UrbanSolve - Citizen Dashboard</title>
+  <link rel="stylesheet" href="citizen_dashboard.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-container">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <div class="logo-inner"></div>
+        </div>
+        <h1 class="logo-text">OneStep UrbanSolve</h1>
+      </div>
+      <div class="user-section">
+        <div class="notification-bell">
+          <i class="fas fa-bell"></i>
+          <span class="notification-count">0</span>
+        </div>
+        <span class="user-info">
+          Logged in as <strong id="username">John Citizen</strong>
+        </span>
+        <button class="logout-btn" id="logoutBtn">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Welcome Banner -->
+    <section class="welcome-banner">
+      <div class="welcome-content">
+        <span class="welcome-emoji">👋</span>
+        <div>
+          <h2 class="welcome-title">Welcome, <span id="welcomeName">John</span>!</h2>
+          <p class="welcome-text">
+            Here you can report issues, track your complaints, and see updates from the city departments.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Stats -->
+    <section class="dashboard-stats">
+      <div class="stat-card">
+        <div class="stat-content">
+          <h3>Total Complaints</h3>
+          <p class="stat-value" id="totalComplaints">0</p>
+        </div>
+        <i class="stat-icon stat-icon-1 fas fa-file-alt"></i> 
+      </div>
+      <div class="stat-card">
+        <div class="stat-content">
+          <h3>Pending</h3>
+          <p class="stat-value pending" id="pendingComplaints">0</p>
+        </div>
+        <i class="stat-icon stat-icon-2 fas fa-clock"></i> 
+      </div>
+      <div class="stat-card">
+        <div class="stat-content">
+          <h3>In Progress</h3>
+          <p class="stat-value in-progress" id="inProgressComplaints">0</p>
+        </div>
+        <i class="stat-icon stat-icon-3 fas fa-sync-alt"></i>
+      </div>
+      <div class="stat-card">
+        <div class="stat-content">
+          <h3>Resolved</h3>
+          <p class="stat-value resolved" id="resolvedComplaints">0</p>
+          <div class="progress-container">
+            <span>Resolution Rate</span>
+            <span id="resolutionRate">0%</span>
+            <div class="progress-bar">
+              <div class="progress-fill" id="resolutionProgress"></div>
+            </div>
+          </div>
+        </div>
+        <i class="stat-icon stat-icon-4 fas fa-check-circle"></i> 
+      </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="quick-actions">
+      <button class="action-btn primary" id="newComplaintBtn">
+        <i class="fas fa-comment-alt"></i> Submit New Complaint
+      </button>
+      <button class="action-btn secondary" id="trackComplaintsBtn">
+        <i class="fas fa-map-marker-alt"></i> Track My Complaints
+      </button>
+    </section>
+
+    <!-- Complaint Form -->
+    <section class="complaint-form-container" id="complaintFormContainer">
+      <div class="complaint-form-card">
+        <div class="form-header">
+          <h3><i class="fas fa-file-alt"></i> Submit New Complaint</h3>
+          <button class="close-btn" id="closeFormBtn">&times;</button>
+        </div>
+        <form id="complaintForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="title">Complaint Title *</label>
+              <input type="text" id="title" name="title" placeholder="Brief description of the issue" required>
+              <span class="error-message" id="titleError"></span>
+            </div>
+            <div class="form-group">
+              <label for="problemType">Problem Type *</label>
+              <select id="problemType" name="problemType" required>
+                <option value="">Select problem type</option>
+                <option value="water-leak">Water Leak</option>
+                <option value="water-quality">Water Quality Issue</option>
+                <option value="water-supply">Water Supply Problem</option>
+                <option value="water-pressure">Water Pressure Issue</option>
+                <option value="pothole">Pothole</option>
+                <option value="road-damage">Road Damage</option>
+                <option value="street-light">Street Light Issue</option>
+                <option value="traffic-signal">Traffic Signal Problem</option>
+              </select>
+              <span class="error-message" id="problemTypeError"></span>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <label>Location Details *</label>
+            <div class="form-grid triple">
+              <div class="form-group">
+                <select id="zone" name="zone" required>
+                  <option value="">Select Zone</option>
+                  <option value="North">North Zone</option>
+                  <option value="South">South Zone</option>
+                  <option value="East">East Zone</option>
+                  <option value="West">West Zone</option>
+                  <option value="Central">Central Zone</option>
+                </select>
+                <span class="error-message" id="zoneError"></span>
+              </div>
+              <div class="form-group">
+                <select id="ward" name="ward" required disabled>
+                  <option value="">Select Ward</option>
+                </select>
+                <span class="error-message" id="wardError"></span>
+              </div>
+              <div class="form-group">
+                <select id="areaName" name="areaName" required disabled>
+                  <option value="">Select Area</option>
+                </select>
+                <span class="error-message" id="areaNameError"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="photo">Upload Image (Optional)</label>
+            <div class="file-upload">
+              <input type="file" id="photo" name="photo" accept="image/*">
+              <label for="photo" class="upload-btn">
+                <i class="fas fa-upload"></i> Choose File
+              </label>
+              <span class="file-name" id="fileName">No file chosen</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description *</label>
+            <textarea id="description" name="description" rows="4" placeholder="Provide detailed description of the issue..." required></textarea>
+            <span class="error-message" id="descriptionError"></span>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="cancel-btn" id="cancelFormBtn">Cancel</button>
+            <button type="submit" class="submit-btn">
+              <span id="submitBtnText">Submit Complaint</span>
+              <i class="fas fa-spinner fa-spin" id="submitSpinner"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <section class="main-content">
+      <!-- Complaint History -->
+      <div class="complaint-history">
+        <div class="section-header">
+          <h3><i class="fas fa-file-alt"></i> Complaint History</h3>
+          <div class="search-filter">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="searchInput" placeholder="Search complaints...">
+            </div>
+            <select id="statusFilter">
+              <option value="all">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+            <select id="deptFilter">
+              <option value="all">All Departments</option>
+              <option value="Water">Water</option>
+              <option value="Roads">Roads</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table id="complaintsTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Priority</th>
+                <th>Last Updated</th>
+              </tr>
+            </thead>
+            <tbody id="complaintsTableBody">
+              <!-- Complaints will be loaded here -->
+            </tbody>
+          </table>
+          <div class="empty-state" id="emptyState">
+            <i class="fas fa-file-alt"></i>
+            <p>No complaints found matching your criteria.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div class="notifications">
+        <div class="section-header">
+          <h3><i class="fas fa-bell"></i> Notifications</h3>
+          <span class="badge" id="notificationBadge">0 new</span>
+        </div>
+        <div class="notifications-list" id="notificationsList">
+          <!-- Notifications will be loaded here -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Complaint Details Modal -->
+  <div class="modal" id="complaintModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Complaint Details</h3>
+        <button class="close-btn" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Complaint details will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn secondary" id="closeModalBtn2">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="citizen_dashboard.js"></script>
+</body>
+</html>
