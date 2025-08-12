@@ -49,8 +49,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+            if(data.success) {
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = 'citizen_dashboard.html';
+            }
             });
-
             console.log('Signin response status:', response.status); // Debug log
             
             const result = await response.json();
@@ -68,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirect after a delay
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = 'citizen_dashboard.html';
                 }, 2000);
             } else {
                 // Show error message

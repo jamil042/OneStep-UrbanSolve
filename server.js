@@ -2,7 +2,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const db = require('./database');
 const authRoutes = require('./routes/auth');
+const complaintsRoutes = require('./routes/complaints');
+
 
 const app = express();
 const PORT = 3000;
@@ -11,6 +14,7 @@ const PORT = 3000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
 
 // Enhanced debugging middleware
 app.use((req, res, next) => {
@@ -28,7 +32,7 @@ app.use(express.static('.'));
 
 // API routes
 app.use('/api', authRoutes);
-
+app.use('/api', complaintsRoutes);
 // Serve pages
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -41,6 +45,31 @@ app.get('/signin', (req, res) => {
 app.get('/signup', (req, res) => {
     res.sendFile(path.join(__dirname, 'signup.html'));
 });
+
+app.get('/citizen_dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'citizen_dashboard.html'));
+});
+
+app.get('/api/locations', async (req, res) => {
+    try {
+        const [locations] = await db.query('SELECT * FROM Locations');
+        res.json(locations);
+    } catch (err) {
+        console.error('Location fetch error:', err);
+        res.status(500).json({ error: 'Failed to fetch locations' });
+    }
+});
+
+app.get('/api/problems', async (req, res) => {
+    try {
+        const [problems] = await db.query('SELECT * FROM Problem');
+        res.json(problems);
+    } catch (err) {
+        console.error('Problem fetch error:', err);
+        res.status(500).json({ error: 'Failed to fetch problems' });
+    }
+});
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
