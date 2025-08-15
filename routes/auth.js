@@ -65,7 +65,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Login - keeping your existing code but with better logging
+// Login
 router.post('/signin', (req, res) => {
   const { email, password, role } = req.body;
 
@@ -109,16 +109,15 @@ router.post('/signin', (req, res) => {
         }
 
         console.log('Login successful for user:', email);
-        res.json({ 
-          success: true, 
-          message: 'Login successful!',
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role
-          }
-        });
+
+        // ✅ Role-based redirect
+        if (user.role === 'staff') {
+          return res.redirect('/staff-dashboard.html');
+        } else if (user.role === 'admin') {
+          return res.redirect('/admin-dashboard.html');
+        } else {
+          return res.redirect('/citizen-dashboard.html');
+        }
       });
     }
   );
