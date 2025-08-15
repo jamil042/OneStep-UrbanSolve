@@ -2,7 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const pool = require('./database'); // Changed from db to pool
 const authRoutes = require('./routes/auth');
+const complaintsRoutes = require('./routes/complaints');
 
 const app = express();
 const PORT = 3000;
@@ -28,6 +30,7 @@ app.use(express.static('.'));
 
 // API routes
 app.use('/api', authRoutes);
+app.use('/api', complaintsRoutes);
 
 // Serve pages
 app.get('/', (req, res) => {
@@ -40,6 +43,31 @@ app.get('/signin', (req, res) => {
 
 app.get('/signup', (req, res) => {
     res.sendFile(path.join(__dirname, 'signup.html'));
+});
+
+app.get('/citizen_dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'citizen_dashboard.html'));
+});
+
+// API endpoints using callback style like auth.js
+app.get('/api/locations', (req, res) => {
+    pool.query('SELECT * FROM Locations', (err, results) => {
+        if (err) {
+            console.error('Location fetch error:', err);
+            return res.status(500).json({ error: 'Failed to fetch locations' });
+        }
+        res.json(results);
+    });
+});
+
+app.get('/api/problems', (req, res) => {
+    pool.query('SELECT * FROM Problem', (err, results) => {
+        if (err) {
+            console.error('Problem fetch error:', err);
+            return res.status(500).json({ error: 'Failed to fetch problems' });
+        }
+        res.json(results);
+    });
 });
 
 // Error handling middleware
@@ -60,6 +88,11 @@ app.listen(PORT, () => {
     console.log('- GET  / (homepage)');
     console.log('- GET  /signin (signin page)');
     console.log('- GET  /signup (signup page)');
+    console.log('- GET  /citizen_dashboard (citizen dashboard page)');
     console.log('- POST /api/signin');
     console.log('- POST /api/signup');
+    console.log('- POST /api/complaints (submit complaint)');
+    console.log('- GET  /api/complaints/:userId (get user complaints)');
+    console.log('- GET  /api/locations');
+    console.log('- GET  /api/problems');
 });
