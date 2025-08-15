@@ -2,10 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const db = require('./database');
+const pool = require('./database'); // Changed from db to pool
 const authRoutes = require('./routes/auth');
 const complaintsRoutes = require('./routes/complaints');
-
 
 const app = express();
 const PORT = 3000;
@@ -14,7 +13,6 @@ const PORT = 3000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
 
 // Enhanced debugging middleware
 app.use((req, res, next) => {
@@ -33,6 +31,7 @@ app.use(express.static('.'));
 // API routes
 app.use('/api', authRoutes);
 app.use('/api', complaintsRoutes);
+
 // Serve pages
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -50,26 +49,26 @@ app.get('/citizen_dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'citizen_dashboard.html'));
 });
 
-app.get('/api/locations', async (req, res) => {
-    try {
-        const [locations] = await db.query('SELECT * FROM Locations');
-        res.json(locations);
-    } catch (err) {
-        console.error('Location fetch error:', err);
-        res.status(500).json({ error: 'Failed to fetch locations' });
-    }
+// API endpoints using callback style like auth.js
+app.get('/api/locations', (req, res) => {
+    pool.query('SELECT * FROM Locations', (err, results) => {
+        if (err) {
+            console.error('Location fetch error:', err);
+            return res.status(500).json({ error: 'Failed to fetch locations' });
+        }
+        res.json(results);
+    });
 });
 
-app.get('/api/problems', async (req, res) => {
-    try {
-        const [problems] = await db.query('SELECT * FROM Problem');
-        res.json(problems);
-    } catch (err) {
-        console.error('Problem fetch error:', err);
-        res.status(500).json({ error: 'Failed to fetch problems' });
-    }
+app.get('/api/problems', (req, res) => {
+    pool.query('SELECT * FROM Problem', (err, results) => {
+        if (err) {
+            console.error('Problem fetch error:', err);
+            return res.status(500).json({ error: 'Failed to fetch problems' });
+        }
+        res.json(results);
+    });
 });
-
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -89,6 +88,11 @@ app.listen(PORT, () => {
     console.log('- GET  / (homepage)');
     console.log('- GET  /signin (signin page)');
     console.log('- GET  /signup (signup page)');
+    console.log('- GET  /citizen_dashboard (citizen dashboard page)');
     console.log('- POST /api/signin');
     console.log('- POST /api/signup');
+    console.log('- POST /api/complaints (submit complaint)');
+    console.log('- GET  /api/complaints/:userId (get user complaints)');
+    console.log('- GET  /api/locations');
+    console.log('- GET  /api/problems');
 });

@@ -28,7 +28,7 @@ const closeModalBtn2 = document.getElementById('closeModalBtn2');
 const modalTitle = document.getElementById('modalTitle');
 const modalBody = document.getElementById('modalBody');
 
-// Mock location data
+// Mock location data (keeping existing functionality)
 const locationData = {
   "North": {
     "Ward 1": ["Main Street", "Park Road", "Commercial Complex"],
@@ -57,68 +57,113 @@ const locationData = {
   }
 };
 
-// Initial data
-let complaints = [
-  {
-    id: 1,
-    title: 'Pothole Issue on Main Street',
-    status: 'Pending',
-    dept: 'Roads',
-    zone: 'North',
-    ward: 'Ward 1',
-    areaName: 'Main Street',
-    problemType: 'pothole',
-    description: 'Large pothole causing traffic issues',
-    lastUpdated: '2025-08-09',
-    createdAt: '2025-08-08',
-    priority: 'High'
-  },
-  {
-    id: 2,
-    title: 'Water Leak Emergency',
-    status: 'In Progress',
-    dept: 'Water',
-    zone: 'South',
-    ward: 'Ward 3',
-    areaName: 'Park Avenue',
-    problemType: 'water-leak',
-    description: 'Major water leak affecting multiple buildings',
-    lastUpdated: '2025-08-07',
-    createdAt: '2025-08-05',
-    priority: 'High'
-  },
-  {
-    id: 3,
-    title: 'Street Light Not Working',
-    status: 'Resolved',
-    dept: 'Roads',
-    zone: 'East',
-    ward: 'Ward 2',
-    areaName: 'Commercial Area',
-    problemType: 'street-light',
-    description: 'Street light has been non-functional for weeks',
-    lastUpdated: '2025-08-05',
-    createdAt: '2025-08-01',
-    priority: 'Medium'
-  }
-];
-
+// Global variables
+let complaints = [];
 let notifications = [
-  { id: 1, date: '2025-08-09', message: 'Your complaint "Pothole Issue" is now assigned to staff.', read: false },
-  { id: 2, date: '2025-08-02', message: 'Your complaint "Water Leak" was resolved. Please give feedback.', read: false },
-  { id: 3, date: '2025-07-28', message: 'New complaint tracking feature is now available.', read: true },
+  { id: 1, date: '2025-08-09', message: 'Welcome to OneStep UrbanSolve! You can now submit and track complaints.', read: false },
+  { id: 2, date: '2025-08-02', message: 'New complaint tracking feature is now available.', read: true },
 ];
+let currentUser = null;
+
+// Check if user is logged in
+function checkLogin() {
+  const user = JSON.parse(sessionStorage.getItem('user'));
+  if (!user) {
+    alert('Please login first');
+    window.location.href = '/signin';
+    return null;
+  }
+  return user;
+}
 
 // Initialize the dashboard
-function initDashboard() {
-  updateDashboardStats();
-  renderComplaintsTable();
-  renderNotifications();
+async function initDashboard() {
+  currentUser = checkLogin();
+  if (!currentUser) return;
   
   // Set username in welcome message
-  const username = localStorage.getItem('username') || 'John';
+  const username = currentUser.name || 'User';
   document.getElementById('username').textContent = username;
-  document.getElementById('welcomeName').textContent = username;
+  document.getElementById('welcomeName').textContent = username.split(' ')[0]; // First name only
+  
+  // Load user complaints from backend
+  await loadUserComplaints();
+  
+  // These are now called inside loadUserComplaints()
+  // updateDashboardStats();
+  // renderComplaintsTable();
+  
+  renderNotifications();
+}
+
+// Load user complaints from backend
+async function loadUserComplaints() {
+  try {
+    console.log('Loading complaints for user:', currentUser.id);
+    const response = await fetch(`/api/complaints/${currentUser.id}`);
+    
+    if (response.ok) {
+      const backendComplaints = await response.json();
+      console.log('Backend complaints:', backendComplaints);
+      
+      // Transform backend data to match frontend format
+      complaints = backendComplaints.map(complaint => ({
+        id: complaint.id,
+        title: complaint.title,
+        status: complaint.status,
+        dept: mapProblemTypeToDept(complaint.problemType),
+        zone: complaint.zone,
+        ward: complaint.ward,
+        areaName: complaint.areaName,
+        problemType: complaint.problemType,
+        description: complaint.description,
+        lastUpdated: formatDate(complaint.lastUpdated || complaint.createdAt),
+        createdAt: formatDate(complaint.createdAt),
+        priority: complaint.priority || 'Medium'
+      }));
+      
+      // Update UI after loading complaints
+      updateDashboardStats();
+      renderComplaintsTable();
+    } else {
+      console.log('No complaints found or error loading complaints');
+      complaints = []; // Keep empty array for fresh users
+      updateDashboardStats();
+      renderComplaintsTable();
+    }
+  } catch (error) {
+    console.error('Error loading complaints:', error);
+    complaints = []; // Fallback to empty array
+    updateDashboardStats();
+    renderComplaintsTable();
+  }
+}
+
+// Map problem type to department
+function mapProblemTypeToDept(problemType) {
+  if (!problemType) return 'General';
+  
+  // Convert to lowercase for case-insensitive comparison
+  const type = problemType.toLowerCase();
+  
+  const waterTypes = ['water-leak', 'water-quality', 'water-supply', 'water-pressure', 'water'];
+  const roadTypes = ['pothole', 'road-damage', 'street-light', 'traffic-signal', 'road'];
+  
+  if (waterTypes.some(t => type.includes(t))) return 'Water';
+  if (roadTypes.some(t => type.includes(t))) return 'Roads';
+  
+  return 'General';
+}
+
+// Format date for display
+function formatDate(dateString) {
+  if (!dateString) return new Date().toISOString().split('T')[0];
+  
+  // Handle both string and Date objects
+  const date = new Date(dateString);
+  
+  // Return in YYYY-MM-DD format
+  return date.toISOString().split('T')[0];
 }
 
 // Update dashboard statistics
@@ -164,7 +209,7 @@ function renderComplaintsTable() {
   emptyState.style.display = 'none';
   
   complaintsTableBody.innerHTML = filteredComplaints.map(complaint => `
-    <tr>
+    <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
       <td>#${complaint.id}</td>
       <td><strong>${complaint.title}</strong></td>
       <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
@@ -258,6 +303,7 @@ function viewComplaintDetails(id) {
 
 // Format problem type for display
 function formatProblemType(type) {
+  if (!type) return 'General';
   return type
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -390,7 +436,7 @@ function validateForm() {
   return isValid;
 }
 
-// Handle form submission
+// Handle form submission - Updated to use backend API
 async function handleComplaintSubmit(e) {
   e.preventDefault();
   
@@ -401,51 +447,63 @@ async function handleComplaintSubmit(e) {
   submitBtnText.textContent = 'Submitting...';
   submitSpinner.style.display = 'block';
   
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  const formData = new FormData(complaintForm);
-  const newComplaint = {
-    id: complaints.length + 1,
-    title: formData.get('title'),
-    problemType: formData.get('problemType'),
-    zone: formData.get('zone'),
-    ward: formData.get('ward'),
-    areaName: formData.get('areaName'),
-    description: formData.get('description'),
-    status: 'Pending',
-    dept: formData.get('problemType').includes('water') ? 'Water' : 'Roads',
-    lastUpdated: new Date().toISOString().split('T')[0],
-    createdAt: new Date().toISOString().split('T')[0],
-    priority: Math.random() > 0.5 ? 'High' : 'Medium'
-  };
-  
-  // Add to complaints array
-  complaints.unshift(newComplaint);
-  
-  // Add success notification
-  const successNotification = {
-    id: notifications.length + 1,
-    date: new Date().toISOString().split('T')[0],
-    message: `Your complaint "${newComplaint.title}" has been submitted successfully. Tracking ID: #${newComplaint.id}`,
-    read: false
-  };
-  
-  notifications.unshift(successNotification);
-  
-  // Update UI
-  updateDashboardStats();
-  renderComplaintsTable();
-  renderNotifications();
-  hideComplaintForm();
-  
-  // Show success message
-  alert(`Complaint submitted successfully!\n\nTracking ID: #${newComplaint.id}`);
-  
-  // Reset button state
-  submitBtn.disabled = false;
-  submitBtnText.textContent = 'Submit Complaint';
-  submitSpinner.style.display = 'none';
+  try {
+    const formData = new FormData(complaintForm);
+    const complaintData = {
+      title: formData.get('title'),
+      description: formData.get('description'),
+      problemType: formData.get('problemType'),
+      zone: formData.get('zone'),
+      ward: formData.get('ward'),
+      areaName: formData.get('areaName'),
+      userId: currentUser.id
+    };
+    
+    console.log('Submitting complaint:', complaintData);
+    
+    const response = await fetch('/api/complaints', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(complaintData)
+    });
+    
+    const result = await response.json();
+    console.log('Complaint response:', result);
+    
+    if (result.success) {
+      // Add success notification
+      const successNotification = {
+        id: notifications.length + 1,
+        date: new Date().toISOString().split('T')[0],
+        message: `Your complaint "${complaintData.title}" has been submitted successfully. Tracking ID: #${result.complaint_id}`,
+        read: false
+      };
+      
+      notifications.unshift(successNotification);
+      
+      // Reload complaints from backend to get the latest data
+      await loadUserComplaints();
+      
+      // Update UI
+      renderNotifications();
+      hideComplaintForm();
+      
+      // Show success message
+      alert(`Complaint submitted successfully!\n\nTracking ID: #${result.complaint_id}`);
+    } else {
+      alert('Error: ' + (result.error || 'Failed to submit complaint'));
+    }
+  } catch (error) {
+    console.error('Error submitting complaint:', error);
+    alert('Network error. Please try again.');
+  } finally {
+    // Reset button state
+    submitBtn.disabled = false;
+    submitBtnText.textContent = 'Submit Complaint';
+    submitSpinner.style.display = 'none';
+  }
 }
 
 // Track complaints
@@ -457,11 +515,11 @@ function trackComplaints() {
   alert(`Complaint Tracking Summary:\n\nTotal: ${complaints.length}\nPending: ${pending}\nIn Progress: ${inProgress}\nResolved: ${resolved}`);
 }
 
-// Logout
+// Logout - Updated to use sessionStorage
 function logout() {
   if (confirm('Are you sure you want to logout?')) {
-    localStorage.removeItem('username');
-    window.location.href = 'index.html';
+    sessionStorage.removeItem('user');
+    window.location.href = '/signin';
   }
 }
 

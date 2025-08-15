@@ -49,32 +49,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-            if(data.success) {
-                localStorage.setItem('user', JSON.stringify(data.user));
-                window.location.href = 'citizen_dashboard.html';
-            }
             });
+
             console.log('Signin response status:', response.status); // Debug log
             
             const result = await response.json();
             console.log('Signin response data:', result); // Debug log
 
             if (response.ok && result.success) {
-                // Store user data in sessionStorage (since we can't use localStorage)
-                const userData = {
-                    user: result.user,
-                    loginTime: new Date().toISOString()
-                };
+                // Store user data in sessionStorage for the dashboard
+                sessionStorage.setItem('user', JSON.stringify(result.user));
+                
+                console.log('User data stored:', result.user); // Debug log
                 
                 // Show success message
                 showSuccessModal('Welcome back, ' + result.user.name + '!');
                 
-                // Redirect after a delay
+                // Redirect based on role after a delay
                 setTimeout(() => {
-                    window.location.href = 'citizen_dashboard.html';
+                    if (result.user.role === 'citizen' || result.user.role === 'user') {
+                        window.location.href = '/citizen_dashboard';
+                    } else if (result.user.role === 'staff') {
+                        // Redirect to staff dashboard when available
+                        window.location.href = '/citizen_dashboard'; // Temporary
+                    } else if (result.user.role === 'admin') {
+                        // Redirect to admin dashboard when available  
+                        window.location.href = '/citizen_dashboard'; // Temporary
+                    } else {
+                        window.location.href = '/citizen_dashboard';
+                    }
                 }, 2000);
             } else {
                 // Show error message
@@ -118,6 +121,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+        }
+
+        // Also show the general error container if it's a general error
+        if (elementId === 'generalError') {
+            const generalErrorContainer = document.getElementById('generalError');
+            if (generalErrorContainer) {
+                const errorTextElement = document.getElementById('generalErrorText');
+                if (errorTextElement) {
+                    errorTextElement.textContent = message;
+                }
+                generalErrorContainer.style.display = 'block';
+            }
         }
     }
 
