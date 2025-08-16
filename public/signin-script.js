@@ -9,15 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordToggle = document.getElementById('passwordToggle');
     const passwordInput = document.getElementById('password');
 
-    passwordToggle.addEventListener('click', function() {
-        togglePasswordVisibility();
-    });
+    if (passwordToggle && passwordInput) {
+        passwordToggle.addEventListener('click', function() {
+            togglePasswordVisibility();
+        });
+    }
 
     // Form submission
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        console.log('Signin form submitted'); // Debug log
+        console.log('Signin form submitted');
         
         // Clear previous errors
         clearErrors();
@@ -30,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
             role: formData.get('role')
         };
 
-        console.log('Signin form data:', data); // Debug log
+        console.log('Signin form data:', data);
 
         // Validate form
         if (!validateForm(data)) {
@@ -41,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setLoadingState(true);
 
         try {
-            console.log('Sending request to /api/signin'); // Debug log
+            console.log('Sending request to /api/signin');
             
             const response = await fetch('/api/signin', {
                 method: 'POST',
@@ -51,25 +53,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(data)
             });
 
-            console.log('Signin response status:', response.status); // Debug log
+            console.log('Signin response status:', response.status);
             
             const result = await response.json();
-            console.log('Signin response data:', result); // Debug log
+            console.log('Signin response data:', result);
 
             if (response.ok && result.success) {
-                // Store user data in sessionStorage (since we can't use localStorage)
-                const userData = {
-                    user: result.user,
-                    loginTime: new Date().toISOString()
-                };
+                console.log('Login successful for user:', result.user);
+                
+                // Store user data in localStorage for session management
+                localStorage.setItem('currentUser', JSON.stringify(result.user));
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('userRole', result.user.role);
                 
                 // Show success message
                 showSuccessModal('Welcome back, ' + result.user.name + '!');
                 
-                // Redirect after a delay
+                // Redirect based on role after a delay
                 setTimeout(() => {
-                    window.location.href = 'staff-dashboard.html';
+                    redirectToDashboard(result.user.role);
                 }, 2000);
+                
             } else {
                 // Show error message
                 showError('generalError', result.error || 'An error occurred during signin');
@@ -113,6 +117,18 @@ document.addEventListener('DOMContentLoaded', function() {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
         }
+
+        // Also show the general error container if it's a general error
+        if (elementId === 'generalError') {
+            const generalErrorContainer = document.getElementById('generalError');
+            if (generalErrorContainer) {
+                const errorTextElement = document.getElementById('generalErrorText');
+                if (errorTextElement) {
+                    errorTextElement.textContent = message;
+                }
+                generalErrorContainer.style.display = 'block';
+            }
+        }
     }
 
     function clearErrors() {
@@ -150,18 +166,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function redirectToDashboard(role) {
+        console.log('Redirecting user with role:', role);
+        
+        // Clear any existing redirects
+        window.location.replace(getDashboardUrl(role));
+    }
+
+    function getDashboardUrl(role) {
+        switch(role) {
+            case 'staff':
+                return '/staff_dashboard';
+            case 'admin':
+                return '/admin_dashboard';
+            case 'user':
+            case 'citizen':
+            default:
+                return '/citizen_dashboard';
+        }
+    }
+
     function togglePasswordVisibility() {
         const eyeOpen = passwordToggle.querySelector('.eye-open');
         const eyeClosed = passwordToggle.querySelector('.eye-closed');
         
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            eyeOpen.style.display = 'none';
-            eyeClosed.style.display = 'block';
+            if (eyeOpen) eyeOpen.style.display = 'none';
+            if (eyeClosed) eyeClosed.style.display = 'block';
         } else {
             passwordInput.type = 'password';
-            eyeOpen.style.display = 'block';
-            eyeClosed.style.display = 'none';
+            if (eyeOpen) eyeOpen.style.display = 'block';
+            if (eyeClosed) eyeClosed.style.display = 'none';
         }
     }
 });
@@ -171,5 +207,14 @@ function closeSuccessModal() {
     const modal = document.getElementById('successModal');
     if (modal) {
         modal.style.display = 'none';
+    }
+}
+
+// Add this function to handle the loginUser() function called in the HTML
+function loginUser() {
+    // Trigger the form submission
+    const form = document.getElementById('signinForm');
+    if (form) {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
 }

@@ -10,23 +10,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const strengthBar = document.getElementById('strengthFill');
     const strengthText = document.getElementById('strengthText');
 
-    passwordInput.addEventListener('input', function() {
-        const password = this.value;
-        const strength = checkPasswordStrength(password);
-        updateStrengthIndicator(strength);
-    });
+    if (passwordInput && strengthBar && strengthText) {
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            const strength = checkPasswordStrength(password);
+            updateStrengthIndicator(strength);
+        });
+    }
 
     // Password toggle
     const passwordToggle = document.getElementById('passwordToggle');
-    passwordToggle.addEventListener('click', function() {
-        togglePasswordVisibility();
-    });
+    if (passwordToggle && passwordInput) {
+        passwordToggle.addEventListener('click', function() {
+            togglePasswordVisibility();
+        });
+    }
 
     // Form submission
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        console.log('Form submitted'); // Debug log
+        console.log('Signup form submitted');
         
         // Clear previous errors
         clearErrors();
@@ -43,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
             terms: formData.get('terms')
         };
 
-        console.log('Form data:', data); // Debug log
+        console.log('Signup form data:', data);
 
         // Validate form
         if (!validateForm(data)) {
@@ -54,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setLoadingState(true);
 
         try {
-            console.log('Sending request to /api/signup'); // Debug log
+            console.log('Sending request to /api/signup');
             
             const response = await fetch('/api/signup', {
                 method: 'POST',
@@ -64,15 +68,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(data)
             });
 
-            console.log('Response status:', response.status); // Debug log
+            console.log('Signup response status:', response.status);
             
             const result = await response.json();
-            console.log('Response data:', result); // Debug log
+            console.log('Signup response data:', result);
 
             if (response.ok && result.success) {
-                // Show success message
-                showSuccessModal('Account created successfully!');
+                // Show success message and redirect
+                showSuccessModal('Account created successfully! You can now sign in.');
                 form.reset();
+                
+                // Reset password strength indicator
+                if (strengthBar && strengthText) {
+                    strengthBar.style.width = '0%';
+                    strengthText.textContent = 'Password strength';
+                }
+                
+                // Redirect to signin page after delay
+                setTimeout(() => {
+                    window.location.href = '/signin';
+                }, 3000);
+                
             } else {
                 // Show error message
                 showError('generalError', result.error || 'An error occurred during signup');
@@ -141,6 +157,21 @@ document.addEventListener('DOMContentLoaded', function() {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
         }
+        
+        // Also show general error if needed
+        if (elementId === 'generalError') {
+            // Create general error element if it doesn't exist
+            let generalError = document.getElementById('generalError');
+            if (!generalError) {
+                generalError = document.createElement('div');
+                generalError.id = 'generalError';
+                generalError.className = 'general-error';
+                generalError.style.cssText = 'background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; color: #dc2626;';
+                form.insertBefore(generalError, form.firstChild);
+            }
+            generalError.textContent = message;
+            generalError.style.display = 'block';
+        }
     }
 
     function clearErrors() {
@@ -149,6 +180,12 @@ document.addEventListener('DOMContentLoaded', function() {
             element.textContent = '';
             element.style.display = 'none';
         });
+        
+        // Clear general error too
+        const generalError = document.getElementById('generalError');
+        if (generalError) {
+            generalError.style.display = 'none';
+        }
     }
 
     function setLoadingState(isLoading) {
@@ -204,12 +241,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            eyeOpen.style.display = 'none';
-            eyeClosed.style.display = 'block';
+            if (eyeOpen) eyeOpen.style.display = 'none';
+            if (eyeClosed) eyeClosed.style.display = 'block';
         } else {
             passwordInput.type = 'password';
-            eyeOpen.style.display = 'block';
-            eyeClosed.style.display = 'none';
+            if (eyeOpen) eyeOpen.style.display = 'block';
+            if (eyeClosed) eyeClosed.style.display = 'none';
         }
     }
 });
