@@ -57,28 +57,50 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Signin response data:', result); // Debug log
 
             if (response.ok && result.success) {
-                // Store user data in sessionStorage for the dashboard
-                sessionStorage.setItem('user', JSON.stringify(result.user));
+                // FIXED: Ensure user data has all required fields
+                const userData = {
+                    id: result.user.id,           // ← CRITICAL: Ensure this exists
+                    name: result.user.name,
+                    email: result.user.email,
+                    role: result.user.role
+                };
                 
-                console.log('User data stored:', result.user); // Debug log
+                console.log('=== SIGNIN SUCCESS ===');
+                console.log('Backend response user:', result.user);
+                console.log('User ID from backend:', result.user.id);
+                
+                // Store user data in sessionStorage AND localStorage for reliability
+                sessionStorage.setItem('user', JSON.stringify(userData));
+                localStorage.setItem('user', JSON.stringify(userData)); // Backup storage
+                
+                console.log('User data stored in both storages:', userData);
+                console.log('User ID stored:', userData.id);
+                
+                // Verify storage worked
+                const storedSessionUser = JSON.parse(sessionStorage.getItem('user'));
+                const storedLocalUser = JSON.parse(localStorage.getItem('user'));
+                console.log('Verification - sessionStorage user:', storedSessionUser);
+                console.log('Verification - localStorage user:', storedLocalUser);
+                console.log('Verification - user ID in session:', storedSessionUser?.id);
                 
                 // Show success message
                 showSuccessModal('Welcome back, ' + result.user.name + '!');
                 
                 // Redirect based on role after a delay
                 setTimeout(() => {
+                    console.log('Redirecting to dashboard...');
                     if (result.user.role === 'citizen' || result.user.role === 'user') {
-                        window.location.href = '/citizen_dashboard';
+                        window.location.href = '/citizen_dashboard.html';
                     } else if (result.user.role === 'staff') {
                         // Redirect to staff dashboard when available
-                        window.location.href = '/citizen_dashboard'; // Temporary
+                        window.location.href = '/citizen_dashboard.html'; // Temporary
                     } else if (result.user.role === 'admin') {
                         // Redirect to admin dashboard when available  
-                        window.location.href = '/citizen_dashboard'; // Temporary
+                        window.location.href = '/citizen_dashboard.html'; // Temporary
                     } else {
-                        window.location.href = '/citizen_dashboard';
+                        window.location.href = '/citizen_dashboard.html';
                     }
-                }, 2000);
+                }, 1500); // Reduced delay
             } else {
                 // Show error message
                 showError('generalError', result.error || 'An error occurred during signin');

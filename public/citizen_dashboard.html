@@ -21,7 +21,7 @@
           <i class="fas fa-bell"></i>
         </div>
         <span class="user-info">
-          Logged in as <strong id="username">John Citizen</strong>
+          Logged in as <strong id="username">Loading...</strong>
         </span>
         <button class="logout-btn" id="logoutBtn">
           <i class="fas fa-sign-out-alt"></i> Logout
@@ -36,7 +36,7 @@
       <div class="welcome-content">
         <span class="welcome-emoji">👋</span>
         <div>
-          <h2 class="welcome-title">Welcome, <span id="welcomeName">John</span>!</h2>
+          <h2 class="welcome-title">Welcome, <span id="welcomeName">Loading...</span>!</h2>
           <p class="welcome-text">
             Here you can report issues, track your complaints, and see updates from the city departments.
           </p>
@@ -75,7 +75,7 @@
             <span>Resolution Rate</span>
             <span id="resolutionRate">0%</span>
             <div class="progress-bar">
-              <div class="progress-fill" id="resolutionProgress"></div>
+              <div class="progress-fill" id="resolutionProgress" style="width: 0%;"></div>
             </div>
           </div>
         </div>
@@ -98,7 +98,7 @@
       <div class="complaint-form-card">
         <div class="form-header">
           <h3><i class="fas fa-file-alt"></i> Submit New Complaint</h3>
-          <button class="close-btn" id="closeFormBtn">&times;</button>
+          <button class="close-btn" id="closeFormBtn" type="button">&times;</button>
         </div>
         <form id="complaintForm">
           <div class="form-grid">
@@ -119,6 +119,11 @@
                 <option value="road-damage">Road Damage</option>
                 <option value="street-light">Street Light Issue</option>
                 <option value="traffic-signal">Traffic Signal Problem</option>
+                <option value="garbage-collection">Garbage Collection</option>
+                <option value="power-outage">Power Outage</option>
+                <option value="sewage-overflow">Sewage Overflow</option>
+                <option value="noise-pollution">Noise Pollution</option>
+                <option value="other">Other</option>
               </select>
               <span class="error-message" id="problemTypeError"></span>
             </div>
@@ -174,7 +179,7 @@
             <button type="button" class="cancel-btn" id="cancelFormBtn">Cancel</button>
             <button type="submit" class="submit-btn">
               <span id="submitBtnText">Submit Complaint</span>
-              <i class="fas fa-spinner fa-spin" id="submitSpinner"></i>
+              <i class="fas fa-spinner fa-spin" id="submitSpinner" style="display: none;"></i>
             </button>
           </div>
         </form>
@@ -202,6 +207,9 @@
               <option value="all">All Departments</option>
               <option value="Water">Water</option>
               <option value="Roads">Roads</option>
+              <option value="Waste">Waste</option>
+              <option value="Electricity">Electricity</option>
+              <option value="General">General</option>
             </select>
           </div>
         </div>
@@ -223,9 +231,10 @@
               <!-- Complaints will be loaded here -->
             </tbody>
           </table>
-          <div class="empty-state" id="emptyState">
+          <div class="empty-state" id="emptyState" style="display: none;">
             <i class="fas fa-file-alt"></i>
             <p>No complaints found matching your criteria.</p>
+            <p><small>Submit your first complaint using the button above!</small></p>
           </div>
         </div>
       </div>
@@ -248,17 +257,56 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="modalTitle">Complaint Details</h3>
-        <button class="close-btn" id="closeModalBtn">&times;</button>
+        <button class="close-btn" id="closeModalBtn" type="button">&times;</button>
       </div>
       <div class="modal-body" id="modalBody">
         <!-- Complaint details will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button class="modal-btn secondary" id="closeModalBtn2">Close</button>
+        <button class="modal-btn secondary" id="closeModalBtn2" type="button">Close</button>
       </div>
     </div>
   </div>
 
+  <!-- Loading Overlay (optional) -->
+  <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+      <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
+      <p>Loading...</p>
+    </div>
+  </div>
+
   <script src="citizen_dashboard.js"></script>
+  
+  <!-- Debug Script (remove in production) -->
+  <script>
+    // Temporary debugging helper
+    window.debugDashboard = function() {
+      console.log('=== Dashboard Debug Info ===');
+      console.log('Current User:', window.currentUser || 'Not loaded');
+      console.log('Complaints Array:', window.complaints || 'Not loaded');
+      console.log('All required elements present:', {
+        totalComplaints: !!document.getElementById('totalComplaints'),
+        pendingComplaints: !!document.getElementById('pendingComplaints'),
+        inProgressComplaints: !!document.getElementById('inProgressComplaints'),
+        resolvedComplaints: !!document.getElementById('resolvedComplaints'),
+        complaintsTableBody: !!document.getElementById('complaintsTableBody'),
+        emptyState: !!document.getElementById('emptyState')
+      });
+      
+      // Force refresh if user exists
+      if (window.currentUser && typeof window.loadUserComplaints === 'function') {
+        console.log('Forcing data refresh...');
+        window.loadUserComplaints();
+      }
+    };
+    
+    // Auto-debug on page load
+    setTimeout(() => {
+      if (window.location.search.includes('debug=true')) {
+        debugDashboard();
+      }
+    }, 2000);
+  </script>
 </body>
 </html>
