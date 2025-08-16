@@ -141,6 +141,20 @@ document.addEventListener('DOMContentLoaded', function() {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
         }
+
+        if (elementId === 'generalError') {
+            // Create general error element if it doesn't exist
+            let generalError = document.getElementById('generalError');
+            if (!generalError) {
+                generalError = document.createElement('div');
+                generalError.id = 'generalError';
+                generalError.className = 'general-error';
+                generalError.style.cssText = 'background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; color: #dc2626;';
+                form.insertBefore(generalError, form.firstChild);
+            }
+            generalError.textContent = message;
+            generalError.style.display = 'block';
+        }
     }
 
     function clearErrors() {
@@ -148,6 +162,12 @@ document.addEventListener('DOMContentLoaded', function() {
         errorElements.forEach(element => {
             element.textContent = '';
             element.style.display = 'none';
+
+            // Clear general error too
+        const generalError = document.getElementById('generalError');
+        if (generalError) {
+            generalError.style.display = 'none';
+        }
         });
     }
 

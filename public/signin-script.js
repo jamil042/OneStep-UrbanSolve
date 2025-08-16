@@ -88,19 +88,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirect based on role after a delay
                 setTimeout(() => {
-                    console.log('Redirecting to dashboard...');
-                    if (result.user.role === 'citizen' || result.user.role === 'user') {
-                        window.location.href = '/citizen_dashboard.html';
-                    } else if (result.user.role === 'staff') {
-                        // Redirect to staff dashboard when available
-                        window.location.href = '/citizen_dashboard.html'; // Temporary
-                    } else if (result.user.role === 'admin') {
-                        // Redirect to admin dashboard when available  
-                        window.location.href = '/citizen_dashboard.html'; // Temporary
-                    } else {
-                        window.location.href = '/citizen_dashboard.html';
-                    }
-                }, 1500); // Reduced delay
+                    redirectToDashboard(result.user.role);
+                }, 2000); // Reduced delay
             } else {
                 // Show error message
                 showError('generalError', result.error || 'An error occurred during signin');
@@ -193,6 +182,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function redirectToDashboard(role) {
+        console.log('Redirecting user with role:', role);
+        
+        // Clear any existing redirects
+        window.location.replace(getDashboardUrl(role));
+    }
+
+    function getDashboardUrl(role) {
+        switch(role) {
+            case 'staff':
+                return '/staff_dashboard';
+            case 'admin':
+                return '/admin_dashboard';
+            case 'user':
+            case 'citizen':
+            default:
+                return '/citizen_dashboard';
+        }
+    }
+
     function togglePasswordVisibility() {
         const eyeOpen = passwordToggle.querySelector('.eye-open');
         const eyeClosed = passwordToggle.querySelector('.eye-closed');
@@ -214,5 +223,13 @@ function closeSuccessModal() {
     const modal = document.getElementById('successModal');
     if (modal) {
         modal.style.display = 'none';
+    }
+}
+
+function loginUser() {
+    // Trigger the form submission
+    const form = document.getElementById('signinForm');
+    if (form) {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
 }
