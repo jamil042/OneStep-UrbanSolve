@@ -69,61 +69,6 @@ app.get('/citizen_dashboard', (req, res) => {
                 <html>
                 <head>
                     <title>Citizen Dashboard - OneStep Urban Solve</title>
-                    <style>
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            text-align: center; 
-                            padding: 50px; 
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            min-height: 100vh;
-                            margin: 0;
-                        }
-                        .container { 
-                            max-width: 800px; 
-                            margin: 0 auto; 
-                            background: rgba(255,255,255,0.1);
-                            border-radius: 15px;
-                            padding: 40px;
-                            backdrop-filter: blur(10px);
-                        }
-                        .welcome { 
-                            background: rgba(255,255,255,0.2); 
-                            border-radius: 12px; 
-                            padding: 30px; 
-                            margin: 20px 0; 
-                        }
-                        .nav-links {
-                            display: flex;
-                            gap: 20px;
-                            justify-content: center;
-                            margin: 30px 0;
-                        }
-                        .nav-link {
-                            background: rgba(255,255,255,0.2);
-                            color: white;
-                            text-decoration: none;
-                            padding: 15px 25px;
-                            border-radius: 8px;
-                            transition: all 0.3s ease;
-                        }
-                        .nav-link:hover {
-                            background: rgba(255,255,255,0.3);
-                            transform: translateY(-2px);
-                        }
-                        .features {
-                            display: grid;
-                            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                            gap: 20px;
-                            margin: 30px 0;
-                        }
-                        .feature {
-                            background: rgba(255,255,255,0.1);
-                            padding: 20px;
-                            border-radius: 10px;
-                            border: 1px solid rgba(255,255,255,0.2);
-                        }
-                    </style>
                 </head>
                 <body>
                     <div class="container">
@@ -157,18 +102,6 @@ app.get('/citizen_dashboard', (req, res) => {
                                 <p>Get help when you need it</p>
                             </div>
                         </div>
-
-                        <script>
-                            // Check if user is logged in
-                            const currentUser = localStorage.getItem('currentUser');
-                            const isLoggedIn = localStorage.getItem('isLoggedIn');
-                            
-                            if (currentUser && isLoggedIn === 'true') {
-                                const user = JSON.parse(currentUser);
-                                document.querySelector('.welcome h2').textContent = 'Welcome, ' + user.name + '!';
-                                console.log('User logged in:', user);
-                            }
-                        </script>
                     </div>
                 </body>
                 </html>
@@ -193,45 +126,6 @@ app.get('/staff_dashboard', (req, res) => {
             <html>
             <head>
                 <title>Staff Dashboard - OneStep Urban Solve</title>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        text-align: center; 
-                        padding: 50px; 
-                        background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
-                        color: white;
-                        min-height: 100vh;
-                        margin: 0;
-                    }
-                    .container { 
-                        max-width: 600px; 
-                        margin: 0 auto; 
-                        background: rgba(255,255,255,0.1);
-                        border-radius: 15px;
-                        padding: 40px;
-                        backdrop-filter: blur(10px);
-                    }
-                    .message { 
-                        background: rgba(255,255,255,0.2); 
-                        border-radius: 12px; 
-                        padding: 30px; 
-                        margin: 20px 0; 
-                    }
-                    .nav-link {
-                        background: rgba(255,255,255,0.2);
-                        color: white;
-                        text-decoration: none;
-                        padding: 15px 25px;
-                        border-radius: 8px;
-                        display: inline-block;
-                        margin: 10px;
-                        transition: all 0.3s ease;
-                    }
-                    .nav-link:hover {
-                        background: rgba(255,255,255,0.3);
-                        transform: translateY(-2px);
-                    }
-                </style>
             </head>
             <body>
                 <div class="container">
@@ -266,45 +160,6 @@ app.get('/admin_dashboard', (req, res) => {
             <html>
             <head>
                 <title>Admin Dashboard - OneStep Urban Solve</title>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        text-align: center; 
-                        padding: 50px; 
-                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                        color: white;
-                        min-height: 100vh;
-                        margin: 0;
-                    }
-                    .container { 
-                        max-width: 600px; 
-                        margin: 0 auto; 
-                        background: rgba(255,255,255,0.1);
-                        border-radius: 15px;
-                        padding: 40px;
-                        backdrop-filter: blur(10px);
-                    }
-                    .message { 
-                        background: rgba(255,255,255,0.2); 
-                        border-radius: 12px; 
-                        padding: 30px; 
-                        margin: 20px 0; 
-                    }
-                    .nav-link {
-                        background: rgba(255,255,255,0.2);
-                        color: white;
-                        text-decoration: none;
-                        padding: 15px 25px;
-                        border-radius: 8px;
-                        display: inline-block;
-                        margin: 10px;
-                        transition: all 0.3s ease;
-                    }
-                    .nav-link:hover {
-                        background: rgba(255,255,255,0.3);
-                        transform: translateY(-2px);
-                    }
-                </style>
             </head>
             <body>
                 <div class="container">
