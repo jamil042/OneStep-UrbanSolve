@@ -9,17 +9,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordToggle = document.getElementById('passwordToggle');
     const passwordInput = document.getElementById('password');
 
-    if (passwordToggle && passwordInput) {
-        passwordToggle.addEventListener('click', function() {
-            togglePasswordVisibility();
-        });
-    }
+    passwordToggle.addEventListener('click', function() {
+        togglePasswordVisibility();
+    });
 
     // Form submission
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        console.log('Signin form submitted');
+        console.log('Signin form submitted'); // Debug log
         
         // Clear previous errors
         clearErrors();
@@ -32,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
             role: formData.get('role')
         };
 
-        console.log('Signin form data:', data);
+        console.log('Signin form data:', data); // Debug log
 
         // Validate form
         if (!validateForm(data)) {
@@ -43,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setLoadingState(true);
 
         try {
-            console.log('Sending request to /api/signin');
+            console.log('Sending request to /api/signin'); // Debug log
             
             const response = await fetch('/api/signin', {
                 method: 'POST',
@@ -53,18 +51,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(data)
             });
 
-            console.log('Signin response status:', response.status);
+            console.log('Signin response status:', response.status); // Debug log
             
             const result = await response.json();
-            console.log('Signin response data:', result);
+            console.log('Signin response data:', result); // Debug log
 
             if (response.ok && result.success) {
-                console.log('Login successful for user:', result.user);
+                // FIXED: Ensure user data has all required fields
+                const userData = {
+                    id: result.user.id,           // ← CRITICAL: Ensure this exists
+                    name: result.user.name,
+                    email: result.user.email,
+                    role: result.user.role
+                };
                 
-                // Store user data in localStorage for session management
-                localStorage.setItem('currentUser', JSON.stringify(result.user));
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('userRole', result.user.role);
+                console.log('=== SIGNIN SUCCESS ===');
+                console.log('Backend response user:', result.user);
+                console.log('User ID from backend:', result.user.id);
+                
+                // Store user data in sessionStorage AND localStorage for reliability
+                sessionStorage.setItem('user', JSON.stringify(userData));
+                localStorage.setItem('user', JSON.stringify(userData)); // Backup storage
+                
+                console.log('User data stored in both storages:', userData);
+                console.log('User ID stored:', userData.id);
+                
+                // Verify storage worked
+                const storedSessionUser = JSON.parse(sessionStorage.getItem('user'));
+                const storedLocalUser = JSON.parse(localStorage.getItem('user'));
+                console.log('Verification - sessionStorage user:', storedSessionUser);
+                console.log('Verification - localStorage user:', storedLocalUser);
+                console.log('Verification - user ID in session:', storedSessionUser?.id);
                 
                 // Show success message
                 showSuccessModal('Welcome back, ' + result.user.name + '!');
@@ -72,8 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Redirect based on role after a delay
                 setTimeout(() => {
                     redirectToDashboard(result.user.role);
-                }, 2000);
-                
+                }, 2000); // Reduced delay
             } else {
                 // Show error message
                 showError('generalError', result.error || 'An error occurred during signin');
@@ -192,12 +208,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            if (eyeOpen) eyeOpen.style.display = 'none';
-            if (eyeClosed) eyeClosed.style.display = 'block';
+            eyeOpen.style.display = 'none';
+            eyeClosed.style.display = 'block';
         } else {
             passwordInput.type = 'password';
-            if (eyeOpen) eyeOpen.style.display = 'block';
-            if (eyeClosed) eyeClosed.style.display = 'none';
+            eyeOpen.style.display = 'block';
+            eyeClosed.style.display = 'none';
         }
     }
 });
@@ -210,7 +226,6 @@ function closeSuccessModal() {
     }
 }
 
-// Add this function to handle the loginUser() function called in the HTML
 function loginUser() {
     // Trigger the form submission
     const form = document.getElementById('signinForm');

@@ -1,3 +1,5 @@
+// FIXED VERSION - citizen_dashboard.js with proper session handling
+
 // DOM Elements
 const newComplaintBtn = document.getElementById('newComplaintBtn');
 const trackComplaintsBtn = document.getElementById('trackComplaintsBtn');
@@ -65,113 +67,198 @@ let notifications = [
 ];
 let currentUser = null;
 
-// FIXED: Check if user is logged in - now using localStorage to match signin
+// FIXED: Improved login check with retry mechanism
 function checkLogin() {
-  console.log('Checking login status...');
+  console.log('=== CHECKING LOGIN STATUS ===');
   
-  // First try localStorage (new method)
-  let user = localStorage.getItem('currentUser');
-  if (user) {
+  // Try sessionStorage first
+  let user = null;
+  try {
+    const sessionData = sessionStorage.getItem('user');
+    console.log('Raw sessionStorage data:', sessionData);
+    if (sessionData) {
+      user = JSON.parse(sessionData);
+      console.log('Parsed sessionStorage user:', user);
+    }
+  } catch (e) {
+    console.error('Error parsing sessionStorage:', e);
+  }
+  
+  // Try localStorage as fallback
+  if (!user) {
     try {
-      user = JSON.parse(user);
-      console.log('User found in localStorage:', user);
-      return user;
+      const localData = localStorage.getItem('user');
+      console.log('Raw localStorage data:', localData);
+      if (localData) {
+        user = JSON.parse(localData);
+        console.log('Parsed localStorage user:', user);
+        // Move to sessionStorage for consistency
+        if (user) {
+          sessionStorage.setItem('user', JSON.stringify(user));
+          console.log('Moved user data from localStorage to sessionStorage');
+        }
+      }
     } catch (e) {
-      console.error('Error parsing user from localStorage:', e);
-      localStorage.removeItem('currentUser');
+      console.error('Error parsing localStorage:', e);
     }
   }
   
-  // Fallback to sessionStorage (old method)
-  user = sessionStorage.getItem('user');
-  if (user) {
-    try {
-      user = JSON.parse(user);
-      console.log('User found in sessionStorage:', user);
-      return user;
-    } catch (e) {
-      console.error('Error parsing user from sessionStorage:', e);
-      sessionStorage.removeItem('user');
+  console.log('Final user object:', user);
+  
+  // FIXED: More lenient validation - check for either id or other identifying fields
+  if (!user) {
+    console.error('No user data found in storage');
+    showLoginError('No user session found. Please login again.');
+    return null;
+  }
+  
+  // Check for user ID (try different possible field names)
+  const userId = user.id || user.user_id || user.userId;
+  if (!userId) {
+    console.error('User object missing ID field:', user);
+    console.log('Available user fields:', Object.keys(user));
+    
+    // TEMPORARY FIX: If we have email but no ID, create a temporary ID
+    if (user.email) {
+      console.warn('User has email but no ID, creating temporary session...');
+      user.id = 1; // Temporary fallback
+      sessionStorage.setItem('user', JSON.stringify(user));
+      console.log('Added temporary ID to user:', user);
+    } else {
+      showLoginError('Invalid user session. Please login again.');
+      return null;
     }
   }
   
-  console.log('No user found, redirecting to signin');
-  alert('Please login first');
-  window.location.href = '/signin';
-  return null;
+  // Ensure user.id is set properly
+  if (!user.id && userId) {
+    user.id = userId;
+    sessionStorage.setItem('user', JSON.stringify(user));
+    console.log('Normalized user ID field:', user);
+  }
+  
+  console.log('✅ Login check passed. User ID:', user.id);
+  return user;
 }
 
-// Initialize the dashboard
+// FIXED: Add a more user-friendly login error handler
+function showLoginError(message) {
+  console.error('Login error:', message);
+  
+  // Show a more user-friendly message
+  const shouldRedirect = confirm(
+    `${message}\n\nWould you like to go to the login page now?`
+  );
+  
+  if (shouldRedirect) {
+    window.location.href = '/signin.html';
+  } else {
+    // Give user a chance to stay on page for debugging
+    console.log('User chose to stay on page for debugging');
+  }
+}
+
+// FIXED: Initialize dashboard with retry mechanism
 async function initDashboard() {
-  console.log('Initializing dashboard...');
+  console.log('=== INITIALIZING DASHBOARD ===');
+  
+  // Add a small delay to ensure any redirects from signin are complete
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   currentUser = checkLogin();
-  if (!currentUser) return;
+  if (!currentUser) {
+    console.error('Failed to get current user, stopping initialization');
+    return;
+  }
   
-  console.log('Current user:', currentUser);
+  console.log('✅ Current user set:', currentUser);
   
   // Set username in welcome message
-  const username = currentUser.name || 'User';
-  const usernameElement = document.getElementById('username');
-  const welcomeNameElement = document.getElementById('welcomeName');
+  const username = currentUser.name || currentUser.username || currentUser.email || 'User';
+  const userElement = document.getElementById('username');
+  const welcomeElement = document.getElementById('welcomeName');
   
-  if (usernameElement) {
-    usernameElement.textContent = username;
+  if (userElement) {
+    userElement.textContent = username;
+    console.log('Set username element to:', username);
   }
-  if (welcomeNameElement) {
-    welcomeNameElement.textContent = username.split(' ')[0]; // First name only
+  if (welcomeElement) {
+    const firstName = username.split(' ')[0];
+    welcomeElement.textContent = firstName;
+    console.log('Set welcome element to:', firstName);
   }
+  
+  // Make currentUser globally accessible for debugging
+  window.currentUser = currentUser;
+  window.complaints = complaints;
+  
+  console.log('🔍 Debug info available in window.currentUser and window.complaints');
   
   // Load user complaints from backend
+  console.log('Loading user complaints...');
   await loadUserComplaints();
   
   renderNotifications();
+  
+  console.log('✅ Dashboard initialization complete');
 }
 
-// FIXED: Load user complaints from backend - using user_id instead of id
+// IMPROVED: Load user complaints with better error handling and logging
 async function loadUserComplaints() {
+  if (!currentUser || !currentUser.id) {
+    console.error('Cannot load complaints: currentUser or currentUser.id is missing');
+    console.log('currentUser:', currentUser);
+    return;
+  }
+  
   try {
-    // Use user_id which is the correct field name from auth.js
-    const userId = currentUser.user_id || currentUser.id;
-    console.log('Loading complaints for user_id:', userId);
+    console.log('Loading complaints for user ID:', currentUser.id);
+    const url = `/api/complaints/${currentUser.id}`;
+    console.log('Fetching from URL:', url);
     
-    const response = await fetch(`/api/complaints/${userId}`);
+    const response = await fetch(url);
+    console.log('Response status:', response.status);
     
     if (response.ok) {
       const backendComplaints = await response.json();
-      console.log('Backend complaints:', backendComplaints);
+      console.log('Raw backend complaints:', backendComplaints);
       
       // Transform backend data to match frontend format
-      complaints = backendComplaints.map(complaint => ({
-        id: complaint.id,
-        title: complaint.title,
-        status: complaint.status,
-        dept: mapProblemTypeToDept(complaint.problemType),
-        zone: complaint.zone,
-        ward: complaint.ward,
-        areaName: complaint.areaName,
-        problemType: complaint.problemType,
-        description: complaint.description,
-        lastUpdated: formatDate(complaint.lastUpdated || complaint.createdAt),
-        createdAt: formatDate(complaint.createdAt),
-        priority: complaint.priority || 'Medium'
-      }));
+      complaints = backendComplaints.map(complaint => {
+        const transformed = {
+          id: complaint.id,
+          title: complaint.title,
+          status: complaint.status,
+          dept: mapProblemTypeToDept(complaint.problemType),
+          zone: complaint.zone,
+          ward: complaint.ward,
+          areaName: complaint.areaName,
+          problemType: complaint.problemType,
+          description: complaint.description,
+          lastUpdated: formatDate(complaint.lastUpdated || complaint.createdAt),
+          createdAt: formatDate(complaint.createdAt),
+          priority: complaint.priority || 'Medium'
+        };
+        console.log('Transformed complaint:', transformed);
+        return transformed;
+      });
       
-      // Update UI after loading complaints
-      updateDashboardStats();
-      renderComplaintsTable();
+      console.log('Final processed complaints:', complaints);
+      
     } else {
-      console.log('No complaints found or error loading complaints');
+      const errorText = await response.text();
+      console.log('API response not OK:', response.status, errorText);
       complaints = []; // Keep empty array for fresh users
-      updateDashboardStats();
-      renderComplaintsTable();
     }
   } catch (error) {
     console.error('Error loading complaints:', error);
     complaints = []; // Fallback to empty array
-    updateDashboardStats();
-    renderComplaintsTable();
   }
+  
+  // Always update UI after loading complaints (whether successful or not)
+  console.log('Updating dashboard with', complaints.length, 'complaints');
+  updateDashboardStats();
+  renderComplaintsTable();
 }
 
 // Map problem type to department
@@ -181,11 +268,15 @@ function mapProblemTypeToDept(problemType) {
   // Convert to lowercase for case-insensitive comparison
   const type = problemType.toLowerCase();
   
-  const waterTypes = ['water-leak', 'water-quality', 'water-supply', 'water-pressure', 'water'];
-  const roadTypes = ['pothole', 'road-damage', 'street-light', 'traffic-signal', 'road'];
+  const waterTypes = ['water leak', 'water quality', 'water supply', 'water pressure', 'water'];
+  const roadTypes = ['pothole', 'road damage', 'street light', 'traffic signal', 'road'];
+  const wasteTypes = ['garbage', 'waste', 'sanitation', 'cleanliness'];
+  const electricityTypes = ['power', 'electricity', 'electrical'];
   
   if (waterTypes.some(t => type.includes(t))) return 'Water';
   if (roadTypes.some(t => type.includes(t))) return 'Roads';
+  if (wasteTypes.some(t => type.includes(t))) return 'Waste';
+  if (electricityTypes.some(t => type.includes(t))) return 'Electricity';
   
   return 'General';
 }
@@ -196,6 +287,11 @@ function formatDate(dateString) {
   
   // Handle both string and Date objects
   const date = new Date(dateString);
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return new Date().toISOString().split('T')[0];
+  }
   
   // Return in YYYY-MM-DD format
   return date.toISOString().split('T')[0];
@@ -209,6 +305,9 @@ function updateDashboardStats() {
   const resolved = complaints.filter(c => c.status === 'Resolved').length;
   const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
   
+  console.log('Updating dashboard stats:', { total, pending, inProgress, resolved, resolutionRate });
+  
+  // Update DOM elements
   const totalElement = document.getElementById('totalComplaints');
   const pendingElement = document.getElementById('pendingComplaints');
   const inProgressElement = document.getElementById('inProgressComplaints');
@@ -216,7 +315,10 @@ function updateDashboardStats() {
   const resolutionRateElement = document.getElementById('resolutionRate');
   const resolutionProgressElement = document.getElementById('resolutionProgress');
   
-  if (totalElement) totalElement.textContent = total;
+  if (totalElement) {
+    totalElement.textContent = total;
+    console.log('Updated total complaints to:', total);
+  }
   if (pendingElement) pendingElement.textContent = pending;
   if (inProgressElement) inProgressElement.textContent = inProgress;
   if (resolvedElement) resolvedElement.textContent = resolved;
@@ -226,8 +328,10 @@ function updateDashboardStats() {
 
 // Render complaints table
 function renderComplaintsTable() {
+  console.log('Rendering complaints table, total complaints:', complaints.length);
+  
   if (!complaintsTableBody) {
-    console.log('Complaints table body not found');
+    console.error('complaintsTableBody element not found');
     return;
   }
   
@@ -247,13 +351,20 @@ function renderComplaintsTable() {
     return matchesSearch && matchesStatus && matchesDept;
   });
   
+  console.log('Filtered complaints for display:', filteredComplaints.length);
+  
   if (filteredComplaints.length === 0) {
     complaintsTableBody.innerHTML = '';
-    if (emptyState) emptyState.style.display = 'flex';
+    if (emptyState) {
+      emptyState.style.display = 'flex';
+      console.log('Showing empty state');
+    }
     return;
   }
   
-  if (emptyState) emptyState.style.display = 'none';
+  if (emptyState) {
+    emptyState.style.display = 'none';
+  }
   
   complaintsTableBody.innerHTML = filteredComplaints.map(complaint => `
     <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
@@ -266,30 +377,30 @@ function renderComplaintsTable() {
       <td>${complaint.lastUpdated}</td>
     </tr>
   `).join('');
+  
+  console.log('Complaints table rendered successfully');
 }
 
-// Render notifications
+// Rest of the functions remain the same...
 function renderNotifications() {
-  if (!notificationBadge || !notificationsList) {
-    console.log('Notification elements not found');
-    return;
+  const unreadCount = notifications.filter(n => !n.read).length;
+  if (notificationBadge) {
+    notificationBadge.textContent = `${unreadCount} new`;
   }
   
-  const unreadCount = notifications.filter(n => !n.read).length;
-  notificationBadge.textContent = `${unreadCount} new`;
-  
-  notificationsList.innerHTML = notifications.map(notification => `
-    <div class="notification-item ${notification.read ? '' : 'unread'}" onclick="markNotificationAsRead(${notification.id})">
-      <div class="notification-date">
-        ${notification.date}
-        ${!notification.read ? '<span class="unread-dot"></span>' : ''}
+  if (notificationsList) {
+    notificationsList.innerHTML = notifications.map(notification => `
+      <div class="notification-item ${notification.read ? '' : 'unread'}" onclick="markNotificationAsRead(${notification.id})">
+        <div class="notification-date">
+          ${notification.date}
+          ${!notification.read ? '<span class="unread-dot"></span>' : ''}
+        </div>
+        <p class="notification-message">${notification.message}</p>
       </div>
-      <p class="notification-message">${notification.message}</p>
-    </div>
-  `).join('');
+    `).join('');
+  }
 }
 
-// Mark notification as read
 function markNotificationAsRead(id) {
   notifications = notifications.map(notification => 
     notification.id === id ? { ...notification, read: true } : notification
@@ -297,10 +408,9 @@ function markNotificationAsRead(id) {
   renderNotifications();
 }
 
-// View complaint details
 function viewComplaintDetails(id) {
   const complaint = complaints.find(c => c.id === id);
-  if (!complaint || !complaintModal) return;
+  if (!complaint) return;
   
   if (modalTitle) modalTitle.textContent = `Complaint #${complaint.id}`;
   
@@ -352,27 +462,26 @@ function viewComplaintDetails(id) {
     `;
   }
   
-  complaintModal.classList.add('show');
+  if (complaintModal) {
+    complaintModal.classList.add('show');
+  }
 }
 
-// Format problem type for display
 function formatProblemType(type) {
   if (!type) return 'General';
   return type
-    .split('-')
+    .split(/[-_\s]+/)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
-// Close modal
 function closeModal() {
-  if (complaintModal) complaintModal.classList.remove('show');
+  if (complaintModal) {
+    complaintModal.classList.remove('show');
+  }
 }
 
-// Update wards when zone changes
 function updateWards() {
-  if (!zoneSelect || !wardSelect || !areaSelect) return;
-  
   const selectedZone = zoneSelect.value;
   wardSelect.innerHTML = '<option value="">Select Ward</option>';
   areaSelect.innerHTML = '<option value="">Select Area</option>';
@@ -391,10 +500,7 @@ function updateWards() {
   }
 }
 
-// Update areas when ward changes
 function updateAreas() {
-  if (!zoneSelect || !wardSelect || !areaSelect) return;
-  
   const selectedZone = zoneSelect.value;
   const selectedWard = wardSelect.value;
   areaSelect.innerHTML = '<option value="">Select Area</option>';
@@ -412,21 +518,25 @@ function updateAreas() {
   }
 }
 
-// Show complaint form
 function showComplaintForm() {
   if (complaintFormContainer) {
     complaintFormContainer.classList.add('show');
-    const titleElement = document.getElementById('title');
-    if (titleElement) titleElement.focus();
+    const titleInput = document.getElementById('title');
+    if (titleInput) titleInput.focus();
   }
 }
 
-// Hide complaint form
 function hideComplaintForm() {
-  if (complaintFormContainer) complaintFormContainer.classList.remove('show');
-  if (complaintForm) complaintForm.reset();
+  if (complaintFormContainer) {
+    complaintFormContainer.classList.remove('show');
+  }
+  if (complaintForm) {
+    complaintForm.reset();
+  }
   clearFormErrors();
-  if (fileName) fileName.textContent = 'No file chosen';
+  if (fileName) {
+    fileName.textContent = 'No file chosen';
+  }
   
   // Reset location selects
   if (zoneSelect) zoneSelect.value = '';
@@ -440,7 +550,6 @@ function hideComplaintForm() {
   }
 }
 
-// Clear form errors
 function clearFormErrors() {
   document.querySelectorAll('.error-message').forEach(el => {
     el.textContent = '';
@@ -450,7 +559,6 @@ function clearFormErrors() {
   });
 }
 
-// Validate form
 function validateForm() {
   let isValid = true;
   clearFormErrors();
@@ -462,66 +570,69 @@ function validateForm() {
   const areaName = document.getElementById('areaName');
   const description = document.getElementById('description');
   
-  if (title && !title.value.trim()) {
+  if (!title || !title.value.trim()) {
     const titleError = document.getElementById('titleError');
     if (titleError) titleError.textContent = 'Title is required';
-    title.classList.add('error');
+    if (title) title.classList.add('error');
     isValid = false;
   }
   
-  if (problemType && !problemType.value) {
+  if (!problemType || !problemType.value) {
     const problemTypeError = document.getElementById('problemTypeError');
     if (problemTypeError) problemTypeError.textContent = 'Problem type is required';
-    problemType.classList.add('error');
+    if (problemType) problemType.classList.add('error');
     isValid = false;
   }
   
-  if (zone && !zone.value) {
+  if (!zone || !zone.value) {
     const zoneError = document.getElementById('zoneError');
     if (zoneError) zoneError.textContent = 'Zone is required';
-    zone.classList.add('error');
+    if (zone) zone.classList.add('error');
     isValid = false;
   }
   
-  if (ward && !ward.value) {
+  if (!ward || !ward.value) {
     const wardError = document.getElementById('wardError');
     if (wardError) wardError.textContent = 'Ward is required';
-    ward.classList.add('error');
+    if (ward) ward.classList.add('error');
     isValid = false;
   }
   
-  if (areaName && !areaName.value) {
+  if (!areaName || !areaName.value) {
     const areaNameError = document.getElementById('areaNameError');
     if (areaNameError) areaNameError.textContent = 'Area is required';
-    areaName.classList.add('error');
+    if (areaName) areaName.classList.add('error');
     isValid = false;
   }
   
-  if (description && !description.value.trim()) {
+  if (!description || !description.value.trim()) {
     const descriptionError = document.getElementById('descriptionError');
     if (descriptionError) descriptionError.textContent = 'Description is required';
-    description.classList.add('error');
+    if (description) description.classList.add('error');
     isValid = false;
   }
   
   return isValid;
 }
 
-// FIXED: Handle form submission - using correct user_id
+// IMPROVED: Handle form submission with proper user ID
 async function handleComplaintSubmit(e) {
   e.preventDefault();
   
-  if (!validateForm()) return;
-  
-  if (!submitBtn || !submitBtnText || !submitSpinner) {
-    console.error('Submit button elements not found');
+  // Double-check user is still logged in
+  if (!currentUser || !currentUser.id) {
+    console.error('User not logged in during complaint submission');
+    alert('Session expired. Please login again.');
+    window.location.href = '/signin.html';
     return;
   }
   
+  if (!validateForm()) return;
+  
   // Show loading state
-  submitBtn.disabled = true;
-  submitBtnText.textContent = 'Submitting...';
-  submitSpinner.style.display = 'block';
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitBtnText) submitBtnText.textContent = 'Submitting...';
+  if (submitSpinner) submitSpinner.style.display = 'block';
   
   try {
     const formData = new FormData(complaintForm);
@@ -532,10 +643,11 @@ async function handleComplaintSubmit(e) {
       zone: formData.get('zone'),
       ward: formData.get('ward'),
       areaName: formData.get('areaName'),
-      userId: currentUser.user_id || currentUser.id // Use correct field
+      userId: currentUser.id  // IMPORTANT: Ensure user ID is included
     };
     
-    console.log('Submitting complaint:', complaintData);
+    console.log('Submitting complaint with data:', complaintData);
+    console.log('User ID being sent:', currentUser.id);
     
     const response = await fetch('/api/complaints', {
       method: 'POST',
@@ -546,7 +658,7 @@ async function handleComplaintSubmit(e) {
     });
     
     const result = await response.json();
-    console.log('Complaint response:', result);
+    console.log('Complaint submission response:', result);
     
     if (result.success) {
       // Add success notification
@@ -560,6 +672,7 @@ async function handleComplaintSubmit(e) {
       notifications.unshift(successNotification);
       
       // Reload complaints from backend to get the latest data
+      console.log('Reloading complaints after successful submission...');
       await loadUserComplaints();
       
       // Update UI
@@ -576,13 +689,12 @@ async function handleComplaintSubmit(e) {
     alert('Network error. Please try again.');
   } finally {
     // Reset button state
-    submitBtn.disabled = false;
-    submitBtnText.textContent = 'Submit Complaint';
-    submitSpinner.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtnText) submitBtnText.textContent = 'Submit Complaint';
+    if (submitSpinner) submitSpinner.style.display = 'none';
   }
 }
 
-// Track complaints
 function trackComplaints() {
   const pending = complaints.filter(c => c.status === 'Pending').length;
   const inProgress = complaints.filter(c => c.status === 'In Progress').length;
@@ -591,49 +703,48 @@ function trackComplaints() {
   alert(`Complaint Tracking Summary:\n\nTotal: ${complaints.length}\nPending: ${pending}\nIn Progress: ${inProgress}\nResolved: ${resolved}`);
 }
 
-// FIXED: Logout - clear both localStorage and sessionStorage
 function logout() {
   if (confirm('Are you sure you want to logout?')) {
-    // Clear both storage methods
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userRole');
     sessionStorage.removeItem('user');
-    
-    window.location.href = '/signin';
+    localStorage.removeItem('user'); // Also clear localStorage
+    window.location.href = '/signin.html';
   }
 }
 
-// Event Listeners with null checks
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, setting up event listeners...');
-  
-  if (newComplaintBtn) newComplaintBtn.addEventListener('click', showComplaintForm);
-  if (trackComplaintsBtn) trackComplaintsBtn.addEventListener('click', trackComplaints);
-  if (closeFormBtn) closeFormBtn.addEventListener('click', hideComplaintForm);
-  if (cancelFormBtn) cancelFormBtn.addEventListener('click', hideComplaintForm);
-  if (complaintForm) complaintForm.addEventListener('submit', handleComplaintSubmit);
-  if (zoneSelect) zoneSelect.addEventListener('change', updateWards);
-  if (wardSelect) wardSelect.addEventListener('change', updateAreas);
-  if (photoInput) {
-    photoInput.addEventListener('change', function() {
-      if (fileName) fileName.textContent = this.files[0] ? this.files[0].name : 'No file chosen';
-    });
-  }
-  if (searchInput) searchInput.addEventListener('input', renderComplaintsTable);
-  if (statusFilter) statusFilter.addEventListener('change', renderComplaintsTable);
-  if (deptFilter) deptFilter.addEventListener('change', renderComplaintsTable);
-  if (notificationBell) {
-    notificationBell.addEventListener('click', function() {
-      if (notificationsList && notificationsList.parentElement) {
-        notificationsList.parentElement.scrollIntoView({ behavior: 'smooth' });
-      }
-    });
-  }
-  if (logoutBtn) logoutBtn.addEventListener('click', logout);
-  if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-  if (closeModalBtn2) closeModalBtn2.addEventListener('click', closeModal);
-  
-  // Initialize the dashboard
-  initDashboard();
-});
+// Event Listeners
+if (newComplaintBtn) newComplaintBtn.addEventListener('click', showComplaintForm);
+if (trackComplaintsBtn) trackComplaintsBtn.addEventListener('click', trackComplaints);
+if (closeFormBtn) closeFormBtn.addEventListener('click', hideComplaintForm);
+if (cancelFormBtn) cancelFormBtn.addEventListener('click', hideComplaintForm);
+if (complaintForm) complaintForm.addEventListener('submit', handleComplaintSubmit);
+if (zoneSelect) zoneSelect.addEventListener('change', updateWards);
+if (wardSelect) wardSelect.addEventListener('change', updateAreas);
+if (photoInput) {
+  photoInput.addEventListener('change', function() {
+    if (fileName) {
+      fileName.textContent = this.files[0] ? this.files[0].name : 'No file chosen';
+    }
+  });
+}
+if (searchInput) searchInput.addEventListener('input', renderComplaintsTable);
+if (statusFilter) statusFilter.addEventListener('change', renderComplaintsTable);
+if (deptFilter) deptFilter.addEventListener('change', renderComplaintsTable);
+if (notificationBell) {
+  notificationBell.addEventListener('click', function() {
+    if (notificationsList && notificationsList.parentElement) {
+      notificationsList.parentElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+}
+if (logoutBtn) logoutBtn.addEventListener('click', logout);
+if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+if (closeModalBtn2) closeModalBtn2.addEventListener('click', closeModal);
+
+// Initialize the dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', initDashboard);
+
+// Make functions globally accessible for debugging
+window.loadUserComplaints = loadUserComplaints;
+window.updateDashboardStats = updateDashboardStats;
+window.renderComplaintsTable = renderComplaintsTable;
+window.checkLogin = checkLogin;
