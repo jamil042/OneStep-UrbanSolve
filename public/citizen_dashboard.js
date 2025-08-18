@@ -32,32 +32,41 @@ const modalBody = document.getElementById('modalBody');
 
 // Mock location data (keeping existing functionality)
 const locationData = {
-  "North": {
-    "Ward 1": ["Main Street", "Park Road", "Commercial Complex"],
-    "Ward 2": ["Residential Area A", "Shopping Center", "Government Colony"],
-    "Ward 3": ["Industrial Area", "New Town", "Railway Station Area"]
+  "Dhaka North City Corporation": {
+    "Zone 1": [
+      "Mirpur", "Shah Ali", "Rupnagar", "Pallabi", "Darus Salam", 
+      "Kafrul", "Bhashantek", "Mohammadpur", "Adabor", 
+      "Sher-e-Bangla Nagar", "Tejgaon", "Tejgaon Industrial Area"
+    ],
+    "Zone 2": [
+      "Hatirjheel", "Rampura", "Badda", "Bhatara", 
+      "Gulshan", "Banani", "Dhaka Cantonment", "Khilkhet", "Airport"
+    ],
+    "Zone 3": [
+      "Dakshinkhan", "Uttarkhan", "Farmgate", 
+      "Uttara East", "Uttara West", "Agargaon", "Kurmitola", 
+      "Purbachal", "Turag"
+    ]
   },
-  "South": {
-    "Ward 1": ["Hospital Road", "School Street", "Market Area"],
-    "Ward 2": ["Bus Stand", "Old City", "Temple Road"],
-    "Ward 3": ["Park Avenue", "Sports Complex", "University Area"]
-  },
-  "East": {
-    "Ward 1": ["Tech Park", "Lake View", "Hillside"],
-    "Ward 2": ["Commercial Area", "Residential Plot", "Metro Station"],
-    "Ward 3": ["Airport Road", "IT Corridor", "Business District"]
-  },
-  "West": {
-    "Ward 1": ["Sunset Boulevard", "River Side", "Green Park"],
-    "Ward 2": ["Industrial Estate", "Farmers Market", "Heritage Area"],
-    "Ward 3": ["New Development", "Sports Stadium", "Cultural Center"]
-  },
-  "Central": {
-    "Ward 1": ["City Center", "Town Hall", "Central Square"],
-    "Ward 2": ["Financial District", "Court Complex", "Administrative Area"],
-    "Ward 3": ["Convention Center", "Exhibition Ground", "Central Park"]
+
+  "Dhaka South City Corporation": {
+    "Zone 1": [
+      "Paltan", "Motijheel", "Sabujbagh", "Khilgaon", 
+      "Mugda", "Shahjahanpur", "Shyampur", "Jatrabari", "Demra"
+    ],
+    "Zone 2": [
+      "Bangshal", "Chawkbazar", "Lalbagh", "Kotwali", "Sutrapur", 
+      "Wari", "Gendaria", "Hazaribagh", "Ramna", "Dhanmondi"
+    ],
+    "Zone 3": [
+      "Moghbazar", "Malibagh", "Nilkhet", "Palashi", "Sayedabad", 
+      "Karwan Bazar", "Banglamotor", "Kalabagan", "Gulistan", 
+      "Segunbagicha", "Panthapath", "Shahbagh", 
+      "New Market", "Kamrangirchar", "Kadamtali"
+    ]
   }
 };
+
 
 // Global variables
 let complaints = [];
