@@ -162,16 +162,14 @@ app.get('/admin_dashboard', (req, res) => {
                 <title>Admin Dashboard - OneStep Urban Solve</title>
             </head>
             <body>
-                <div class="container">
+                
                     <h1>⚙️ Admin Dashboard</h1>
-                    <div class="message">
+                 
                         <h2>Welcome, Administrator!</h2>
                         <p>The admin dashboard is currently under development.</p>
-                        <p>You have successfully logged in with administrative privileges.</p>
                         <a href="/signin" class="nav-link">← Back to Sign In</a>
                         <a href="/" class="nav-link">🏠 Home</a>
-                    </div>
-                </div>
+                  
             </body>
             </html>
         `);
@@ -179,6 +177,17 @@ app.get('/admin_dashboard', (req, res) => {
 });
 
 // API endpoints using callback style like auth.js
+// Fetch all complaints for admin dashboard
+app.get('/api/complaints', (req, res) => {
+    pool.query('SELECT * FROM Complaints', (err, results) => {
+        if (err) {
+            console.error('Complaints fetch error:', err);
+            return res.status(500).json({ error: 'Failed to fetch complaints' });
+        }
+        res.json(results);
+    });
+});
+
 app.get('/api/locations', (req, res) => {
     pool.query('SELECT * FROM Locations', (err, results) => {
         if (err) {

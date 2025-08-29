@@ -191,109 +191,109 @@ async function initAdminDashboard() {
   console.log('✅ Admin dashboard initialization complete');
 }
 
-// Generate mock complaints data 
+// Generate mock complaints data
 function generateMockComplaints() {
   const mockComplaints = [
     {
       id: 1001,
-      title: 'Water pipe burst in Mirpur',
-      description: 'Large water pipe has burst causing flooding in Mirpur-10 residential area.',
-      citizenName: 'Abdul Karim',
-      citizenEmail: 'abdul.karim@example.com',
+      title: 'Water pipe burst on Main Street',
+      description: 'Large water pipe has burst causing flooding on Main Street near the shopping center.',
+      citizenName: 'Sarah Johnson',
+      citizenEmail: 'sarah.j@email.com',
       reportedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       status: 'Pending',
       department: null,
       assignedStaff: null,
       priority: null,
-      location: 'Mirpur-10, Dhaka',
-      zone: 'Dhaka North City Corporation',
-      ward: 'Zone 1',
-      areaName: 'Mirpur',
+      location: 'Main Street, Downtown',
+      zone: 'Central',
+      ward: 'Ward 1',
+      areaName: 'City Center',
       problemType: 'Water Leak'
     },
     {
       id: 1002,
       title: 'Pothole causing vehicle damage',
-      description: 'Deep pothole in Mohammadpur has been causing damage to vehicles. Multiple complaints received.',
-      citizenName: 'Shamima Akter',
-      citizenEmail: 'shamima.akter@example.com',
+      description: 'Deep pothole on Oak Avenue is causing damage to vehicles. Multiple complaints received.',
+      citizenName: 'Mike Chen',
+      citizenEmail: 'mike.chen@email.com',
       reportedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'In Progress',
       department: 'Road Maintenance',
-      assignedStaff: 'Rahim Uddin',
+      assignedStaff: 'John Smith',
       priority: 'Medium',
-      location: 'Mohammadpur, Dhaka',
-      zone: 'Dhaka North City Corporation',
-      ward: 'Zone 1',
-      areaName: 'Mohammadpur',
+      location: 'Oak Avenue, Block 200',
+      zone: 'North',
+      ward: 'Ward 2',
+      areaName: 'Residential Area A',
       problemType: 'Pothole'
     },
     {
       id: 1003,
       title: 'Street light not working',
-      description: 'Street light at Shahbagh intersection has been out for several days.',
-      citizenName: 'Farzana Rahman',
-      citizenEmail: 'farzana.rahman@example.com',
+      description: 'Street light at Park Road intersection has been out for several days.',
+      citizenName: 'Lisa Wang',
+      citizenEmail: 'lisa.wang@email.com',
       reportedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
       status: 'Pending',
       department: null,
       assignedStaff: null,
       priority: null,
-      location: 'Shahbagh, Dhaka',
-      zone: 'Dhaka South City Corporation',
-      ward: 'Zone 3',
-      areaName: 'Shahbagh',
+      location: 'Park Road Intersection',
+      zone: 'South',
+      ward: 'Ward 1',
+      areaName: 'Market Area',
       problemType: 'Street Light'
     },
     {
       id: 1004,
       title: 'Water quality issue reported',
-      description: 'Residents of Badda reporting unusual taste and color in water supply.',
-      citizenName: 'Jahidul Islam',
-      citizenEmail: 'jahidul.islam@example.com',
+      description: 'Citizens reporting unusual taste and color in water supply in residential area.',
+      citizenName: 'David Park',
+      citizenEmail: 'david.park@email.com',
       reportedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
       status: 'Resolved',
       department: 'Water Management',
-      assignedStaff: 'Maria Akter',
+      assignedStaff: 'Maria Garcia',
       priority: 'High',
-      location: 'Badda, Dhaka',
-      zone: 'Dhaka North City Corporation',
-      ward: 'Zone 2',
-      areaName: 'Badda',
+      location: 'Green Park Colony',
+      zone: 'West',
+      ward: 'Ward 3',
+      areaName: 'Green Park',
       problemType: 'Water Quality'
     },
     {
       id: 1005,
       title: 'Traffic signal malfunction',
-      description: 'Traffic signal at Motijheel commercial area is not working properly, causing heavy traffic jam.',
-      citizenName: 'Nasrin Sultana',
-      citizenEmail: 'nasrin.sultana@example.com',
+      description: 'Traffic signal at busy intersection is not working properly, causing traffic issues.',
+      citizenName: 'Emily Rodriguez',
+      citizenEmail: 'emily.r@email.com',
       reportedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
       status: 'In Progress',
       department: 'Electrical',
-      assignedStaff: 'Mehedi Hasan',
+      assignedStaff: 'Robert Johnson',
       priority: 'High',
-      location: 'Motijheel, Dhaka',
-      zone: 'Dhaka South City Corporation',
-      ward: 'Zone 1',
-      areaName: 'Motijheel',
+      location: '5th Street & Market',
+      zone: 'Central',
+      ward: 'Ward 2',
+      areaName: 'Financial District',
       problemType: 'Traffic Signal'
     },
     {
       id: 1006,
       title: 'Garbage collection missed',
       description: 'Garbage has not been collected for the past week in residential area.',
-      citizenName: 'Rafiq Hossain',
-      citizenEmail: 'rafiq.hossain@example.com',
-      reportedAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+      citizenName: 'Tom Wilson',
+      citizenEmail: 'tom.wilson@email.com',
+      reportedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
       status: 'Pending',
       department: null,
       assignedStaff: null,
       priority: null,
-      location: 'Jatrabari, Dhaka',
-      zone: 'Dhaka South City Corporation',
-      ward: 'Zone 2',
-      areaName: 'Jatrabari',
+      location: 'Sunset Avenue',
+      zone: 'East',
+      ward: 'Ward 4',
+      areaName: 'Residential Complex',
       problemType: 'Sanitation'
     }
   ];
@@ -301,25 +301,15 @@ function generateMockComplaints() {
   return mockComplaints;
 }
 
-
 // Load all complaints
 async function loadAllComplaints() {
-  if (!currentUser || !currentUser.id) {
-    console.error('Cannot load complaints: currentUser or currentUser.id is missing');
-    return;
-  }
-  
   try {
-    console.log('Loading all complaints for admin:', currentUser.id);
-    
-    // In real app, this would be an API call
-    // const response = await fetch('/api/admin/complaints');
-    
-    // For demo, use mock data
-    console.log('Using mock data for admin complaints (would be API call in production)');
-    
-    allComplaints = generateMockComplaints();
-    
+    console.log('Loading all complaints for admin from /api/complaints');
+    const response = await fetch('/api/complaints');
+    if (!response.ok) {
+      throw new Error('Failed to fetch complaints: ' + response.status);
+    }
+    allComplaints = await response.json();
     console.log('Loaded', allComplaints.length, 'complaints for admin dashboard');
   } catch (error) {
     console.error('Error loading complaints:', error);
@@ -327,13 +317,13 @@ async function loadAllComplaints() {
   }
 }
 
-// Generate mock staff data (Bangladesh format)
+// Generate mock staff data
 function generateMockStaff() {
   return [
     {
       id: 101,
-      name: 'Tamim Sharif',
-      email: 'tamim.sharif@dncc.gov.bd',
+      name: 'John Smith',
+      email: 'john.smith@city.gov',
       department: 'Road Maintenance',
       status: 'available',
       complaintsHandled: 24,
@@ -341,8 +331,8 @@ function generateMockStaff() {
     },
     {
       id: 102,
-      name: 'Abu Salah',
-      email: 'abu.salah@dscc.gov.bd',
+      name: 'Maria Garcia',
+      email: 'maria.garcia@city.gov',
       department: 'Water Management',
       status: 'busy',
       complaintsHandled: 18,
@@ -350,8 +340,8 @@ function generateMockStaff() {
     },
     {
       id: 103,
-      name: 'Tasnim Taz',
-      email: 'tasnim.taz@dncc.gov.bd',
+      name: 'Robert Johnson',
+      email: 'robert.j@city.gov',
       department: 'Electrical',
       status: 'available',
       complaintsHandled: 31,
@@ -359,8 +349,8 @@ function generateMockStaff() {
     },
     {
       id: 104,
-      name: 'Rashedul Islam',
-      email: 'rashedul.islam@dscc.gov.bd',
+      name: 'Lisa Davis',
+      email: 'lisa.davis@city.gov',
       department: 'Sanitation',
       status: 'available',
       complaintsHandled: 15,

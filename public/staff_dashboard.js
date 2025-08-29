@@ -180,89 +180,88 @@ async function initStaffDashboard() {
   console.log('✅ Staff dashboard initialization complete');
 }
 
-// Generate mock assigned complaints (with real Dhaka locations)
+// Generate mock assigned complaints
 function generateMockComplaints() {
   const mockComplaints = [
     {
       id: 1001,
-      title: 'Water pipe burst in Mirpur',
-      description: 'Large water pipe has burst causing flooding in Mirpur-10 residential area.',
+      title: 'Water pipe burst on Main Street',
+      description: 'Large water pipe has burst causing flooding on Main Street near the shopping center.',
       assignedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
       status: 'Pending',
       priority: 'High',
-      location: 'Mirpur-10, Dhaka',
-      zone: 'Dhaka North City Corporation',
-      ward: 'Zone 1',
-      areaName: 'Mirpur',
+      location: 'Main Street, Downtown',
+      zone: 'Central',
+      ward: 'Ward 1',
+      areaName: 'City Center',
       problemType: 'Water Leak',
-      citizenName: 'Abdul Karim',
+      citizenName: 'Sarah Johnson',
       reportedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
     },
     {
       id: 1002,
       title: 'Pothole causing vehicle damage',
-      description: 'Deep pothole in Mohammadpur has been causing damage to vehicles. Multiple complaints received.',
+      description: 'Deep pothole on Oak Avenue is causing damage to vehicles. Multiple complaints received.',
       assignedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
       status: 'In Progress',
       priority: 'Medium',
-      location: 'Mohammadpur, Dhaka',
-      zone: 'Dhaka North City Corporation',
-      ward: 'Zone 1',
-      areaName: 'Mohammadpur',
+      location: 'Oak Avenue, Block 200',
+      zone: 'North',
+      ward: 'Ward 2',
+      areaName: 'Residential Area A',
       problemType: 'Pothole',
-      citizenName: 'Shamima Akter',
+      citizenName: 'Mike Chen',
       reportedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
       id: 1003,
       title: 'Street light not working',
-      description: 'Street light at Shahbagh intersection has been out for several days.',
+      description: 'Street light at Park Road intersection has been out for several days.',
       assignedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
       status: 'Pending',
       priority: 'Low',
-      location: 'Shahbagh, Dhaka',
-      zone: 'Dhaka South City Corporation',
-      ward: 'Zone 3',
-      areaName: 'Shahbagh',
+      location: 'Park Road Intersection',
+      zone: 'South',
+      ward: 'Ward 1',
+      areaName: 'Market Area',
       problemType: 'Street Light',
-      citizenName: 'Farzana Rahman',
+      citizenName: 'Lisa Wang',
       reportedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
       id: 1004,
       title: 'Water quality issue reported',
-      description: 'Residents of Badda reporting unusual taste and color in water supply.',
+      description: 'Citizens reporting unusual taste and color in water supply in residential area.',
       assignedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
       status: 'Resolved',
       priority: 'High',
-      location: 'Badda, Dhaka',
-      zone: 'Dhaka North City Corporation',
-      ward: 'Zone 2',
-      areaName: 'Badda',
+      location: 'Green Park Colony',
+      zone: 'West',
+      ward: 'Ward 3',
+      areaName: 'Green Park',
       problemType: 'Water Quality',
-      citizenName: 'Jahidul Islam',
+      citizenName: 'David Park',
       reportedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
       id: 1005,
       title: 'Traffic signal malfunction',
-      description: 'Traffic signal at Motijheel commercial area is not working properly, causing heavy traffic jam.',
+      description: 'Traffic signal at busy intersection is not working properly, causing traffic issues.',
       assignedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
       status: 'In Progress',
       priority: 'High',
-      location: 'Motijheel, Dhaka',
-      zone: 'Dhaka South City Corporation',
-      ward: 'Zone 1',
-      areaName: 'Motijheel',
+      location: '5th Street & Market',
+      zone: 'Central',
+      ward: 'Ward 2',
+      areaName: 'Financial District',
       problemType: 'Traffic Signal',
-      citizenName: 'Nasrin Sultana',
+      citizenName: 'Emily Rodriguez',
       reportedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
     }
   ];
   
   return mockComplaints;
 }
-
 
 // IMPROVED: Load assigned complaints with better error handling
 async function loadAssignedComplaints() {
