@@ -6,6 +6,7 @@ const fs = require('fs');
 const pool = require('./database'); // Changed from db to pool
 const authRoutes = require('./routes/auth');
 const complaintsRoutes = require('./routes/complaints');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = 3000;
@@ -32,6 +33,7 @@ app.use(express.static('.'));
 // API routes
 app.use('/api', authRoutes);
 app.use('/api', complaintsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve pages
 app.get('/', (req, res) => {
@@ -198,6 +200,7 @@ app.get('/api/problems', (req, res) => {
         res.json(results);
     });
 });
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

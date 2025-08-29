@@ -105,7 +105,7 @@ function checkAdminLogin() {
     // TEMPORARY FIX: If we have email but no ID, create a temporary ID
     if (user.email) {
       console.warn('User has email but no ID, creating temporary session...');
-      user.id = Date.now(); // Use timestamp as temporary ID
+      user.user_id = Date.now(); // Use timestamp as temporary ID
       sessionStorage.setItem('user', JSON.stringify(user));
       console.log('Added temporary ID to user:', user);
     } else {
@@ -115,13 +115,13 @@ function checkAdminLogin() {
   }
   
   // Ensure user.id is set properly
-  if (!user.id && userId) {
-    user.id = userId;
+  if (!user.user_id && userId) {
+    user.user_id = userId;
     sessionStorage.setItem('user', JSON.stringify(user));
     console.log('Normalized user ID field:', user);
   }
   
-  console.log('✅ Admin login check passed. User ID:', user.id);
+  console.log('✅ Admin login check passed. User ID:', user.user_id);
   return user;
 }
 
