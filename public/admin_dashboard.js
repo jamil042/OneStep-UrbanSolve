@@ -97,7 +97,7 @@ function checkAdminLogin() {
   }
   
   // Check for user ID (try different possible field names)
-  const userId = user.id || user.user_id || user.userId;
+  const userId = user.user_id ;
   if (!userId) {
     console.error('User object missing ID field:', user);
     console.log('Available user fields:', Object.keys(user));
@@ -105,7 +105,7 @@ function checkAdminLogin() {
     // TEMPORARY FIX: If we have email but no ID, create a temporary ID
     if (user.email) {
       console.warn('User has email but no ID, creating temporary session...');
-      user.user_id = Date.now(); // Use timestamp as temporary ID
+      user.id = Date.now(); // Use timestamp as temporary ID
       sessionStorage.setItem('user', JSON.stringify(user));
       console.log('Added temporary ID to user:', user);
     } else {
@@ -303,22 +303,13 @@ function generateMockComplaints() {
 
 // Load all complaints
 async function loadAllComplaints() {
-  if (!currentUser || !currentUser.id) {
-    console.error('Cannot load complaints: currentUser or currentUser.id is missing');
-    return;
-  }
-  
   try {
-    console.log('Loading all complaints for admin:', currentUser.id);
-    
-    // In real app, this would be an API call
-    // const response = await fetch('/api/admin/complaints');
-    
-    // For demo, use mock data
-    console.log('Using mock data for admin complaints (would be API call in production)');
-    
-    allComplaints = generateMockComplaints();
-    
+    console.log('Loading all complaints for admin from /api/complaints');
+    const response = await fetch('/api/complaints');
+    if (!response.ok) {
+      throw new Error('Failed to fetch complaints: ' + response.status);
+    }
+    allComplaints = await response.json();
     console.log('Loaded', allComplaints.length, 'complaints for admin dashboard');
   } catch (error) {
     console.error('Error loading complaints:', error);
