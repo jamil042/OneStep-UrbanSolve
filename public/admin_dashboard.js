@@ -105,7 +105,7 @@ function checkAdminLogin() {
     // TEMPORARY FIX: If we have email but no ID, create a temporary ID
     if (user.email) {
       console.warn('User has email but no ID, creating temporary session...');
-      user.id = Date.now(); // Use timestamp as temporary ID
+      user.user_id = Date.now(); // Use timestamp as temporary ID
       sessionStorage.setItem('user', JSON.stringify(user));
       console.log('Added temporary ID to user:', user);
     } else {
@@ -304,16 +304,20 @@ function generateMockComplaints() {
 // Load all complaints
 async function loadAllComplaints() {
   try {
-    console.log('Loading all complaints for admin from /api/complaints');
-    const response = await fetch('/api/complaints');
+    console.log('Loading all complaints for admin from /api/admin/complaints');
+    const response = await fetch('/api/admin/complaints');
     if (!response.ok) {
       throw new Error('Failed to fetch complaints: ' + response.status);
     }
     allComplaints = await response.json();
     console.log('Loaded', allComplaints.length, 'complaints for admin dashboard');
+    console.log('First complaint data structure:', allComplaints[0]);
+    
   } catch (error) {
     console.error('Error loading complaints:', error);
+    // Don't fall back to mock data
     allComplaints = [];
+    alert('Failed to load complaints. Please check console for details.');
   }
 }
 
@@ -450,7 +454,7 @@ function renderComplaintsTable() {
     const matchesSearch = 
       complaint.title.toLowerCase().includes(searchTerm) ||
       complaint.description.toLowerCase().includes(searchTerm) ||
-      complaint.citizenName.toLowerCase().includes(searchTerm) ||
+      complaint.citizen_name.toLowerCase().includes(searchTerm) ||
       complaint.location.toLowerCase().includes(searchTerm);
     
     const matchesStatus = statusFilterValue === 'all' || complaint.status === statusFilterValue;
@@ -475,21 +479,21 @@ function renderComplaintsTable() {
   }
   
   complaintsTableBody.innerHTML = filteredComplaints.map(complaint => `
-    <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
-      <td>#${complaint.id}</td>
-      <td><strong>${complaint.title}</strong></td>
-      <td>${complaint.citizenName}</td>
-      <td>${complaint.department || 'Not Assigned'}</td>
-      <td>${complaint.assignedStaff || 'Not Assigned'}</td>
-      <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
-      <td>${formatDateTime(complaint.reportedAt)}</td>
-      <td>
-        <button class="assign-btn" onclick="event.stopPropagation(); openAssignmentForm(${complaint.id})" ${complaint.status === 'Resolved' ? 'disabled' : ''}>
-          <i class="fas fa-user-tag"></i> ${complaint.status === 'Pending' ? 'Assign' : 'Reassign'}
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
+    <td>#${complaint.id}</td>
+    <td><strong>${complaint.title}</strong></td>
+    <td>${complaint.citizenName}</td>
+    <td>${complaint.department || 'Not Assigned'}</td>
+    <td>${complaint.assignedStaff || 'Not Assigned'}</td>
+    <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
+    <td>${formatDateTime(complaint.reportedAt)}</td>
+    <td>
+      <button class="assign-btn" onclick="event.stopPropagation(); openAssignmentForm(${complaint.id})" ${complaint.status === 'Resolved' ? 'disabled' : ''}>
+        <i class="fas fa-user-tag"></i> ${complaint.status === 'Pending' ? 'Assign' : 'Reassign'}
+      </button>
+    </td>
+  </tr>
+`).join('');
   
   console.log('Admin complaints table rendered successfully');
 }
@@ -566,18 +570,21 @@ function formatDateTime(dateString) {
 
 // Open assignment form
 function openAssignmentForm(complaintId) {
-  const complaint = allComplaints.find(c => c.id === complaintId);
-  if (!complaint) return;
+  const complaint = allComplaints.find(c => c.id === complaintId || c.complaint_id === complaintId);
+  if (!complaint) {
+    console.error('Complaint not found with ID:', complaintId);
+    return;
+  }
   
-  selectedComplaintId = complaintId;
+  selectedComplaintId = complaint.id || complaint.complaint_id;
   
   // Update selected complaint info
   if (selectedComplaintInfo) {
     selectedComplaintInfo.innerHTML = `
-      <h4>Complaint #${complaint.id}</h4>
+      <h4>Complaint #${selectedComplaintId}</h4>
       <p><strong>${complaint.title}</strong></p>
-      <p>Reported by: ${complaint.citizenName}</p>
-      <p>Location: ${complaint.location}</p>
+      <p>Reported by: ${complaint.citizenName || complaint.citizen_name || 'Unknown'}</p>
+      <p>Location: ${complaint.location || 'Unknown location'}</p>
       <p>Current Status: <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
     `;
   }
@@ -677,6 +684,7 @@ async function handleAssignmentSubmit(e) {
   
   if (!validateAssignmentForm() || !selectedComplaintId) return;
   
+  try {
   // Show loading state
   const assignBtn = assignmentForm.querySelector('button[type="submit"]');
   const assignBtnText = document.getElementById('assignBtnText');
@@ -686,35 +694,47 @@ async function handleAssignmentSubmit(e) {
   if (assignBtnText) assignBtnText.textContent = 'Assigning...';
   if (assignSpinner) assignSpinner.style.display = 'inline-block';
   
-  try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Find and update the complaint
+  // Send assignment request to admin endpoint
+  const response = await fetch(`/api/admin/complaints/${selectedComplaintId}/assign`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      department: assignDepartment.value,
+      assignedStaff: assignStaff.value,
+      priority: assignPriority.value,
+      notes: assignNotes.value
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to assign complaint: ' + response.status);
+  }
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    // Update local data
     const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId);
     if (complaintIndex !== -1) {
-      const complaint = allComplaints[complaintIndex];
-      const wasNewAssignment = complaint.status === 'Pending';
-      
       allComplaints[complaintIndex].department = assignDepartment.value;
       allComplaints[complaintIndex].assignedStaff = assignStaff.value;
       allComplaints[complaintIndex].priority = assignPriority.value;
       allComplaints[complaintIndex].status = 'In Progress';
-      allComplaints[complaintIndex].assignedAt = new Date().toISOString();
       
       // Add to system logs
       const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
-      const actionText = wasNewAssignment ? 'assigned' : 'reassigned';
       systemLogs.unshift({
         id: Date.now(),
         timestamp: new Date(),
-        action: `${adminName} ${actionText} complaint #${selectedComplaintId} to ${assignStaff.value}`,
+        action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
         type: 'success'
       });
     }
     
     // Update UI
-    updateDashboardStats();
+    await loadDashboardStats(); // Refresh stats
     renderComplaintsTable();
     renderSystemLogs();
     updateNotificationBadge();
@@ -722,24 +742,111 @@ async function handleAssignmentSubmit(e) {
     // Close form and show success
     closeAssignmentForm();
     alert(`Complaint #${selectedComplaintId} has been assigned successfully!`);
-    
-  } catch (error) {
-    console.error('Error assigning complaint:', error);
-    alert('Error assigning complaint. Please try again.');
-  } finally {
-    // Reset button state
-    if (assignBtn) assignBtn.disabled = false;
-    if (assignBtnText) assignBtnText.textContent = 'Assign Complaint';
-    if (assignSpinner) assignSpinner.style.display = 'none';
+  } else {
+    throw new Error(result.error || 'Failed to assign complaint');
+  }
+  
+} catch (error) {
+  console.error('Error assigning complaint:', error);
+  alert('Error assigning complaint. Please try again.');
+} finally {
+  // Reset button state
+  const assignBtn = assignmentForm.querySelector('button[type="submit"]');
+  const assignBtnText = document.getElementById('assignBtnText');
+  const assignSpinner = document.getElementById('assignSpinner');
+  
+  if (assignBtn) assignBtn.disabled = false;
+  if (assignBtnText) assignBtnText.textContent = 'Assign Complaint';
+  if (assignSpinner) assignSpinner.style.display = 'none';
   }
 }
 
-// View complaint details in modal
-function viewComplaintDetails(id) {
-  const complaint = allComplaints.find(c => c.id === id);
-  if (!complaint) return;
+
+// Add this function to fetch stats from your admin endpoint
+async function loadDashboardStats() {
+  try {
+    console.log('Loading dashboard stats from /api/admin/stats');
+    const response = await fetch('/api/admin/stats');
+    if (!response.ok) {
+      throw new Error('Failed to fetch stats: ' + response.status);
+    }
+    const stats = await response.json();
+    console.log('Loaded dashboard stats:', stats);
+    
+    // Update DOM elements
+    const totalElement = document.getElementById('totalComplaints');
+    const pendingElement = document.getElementById('pendingComplaints');
+    const inProgressElement = document.getElementById('inProgressComplaints');
+    const resolvedElement = document.getElementById('resolvedComplaints');
+    const resolutionRateElement = document.getElementById('resolutionRate');
+    const resolutionProgressElement = document.getElementById('resolutionProgress');
+    
+    if (totalElement) totalElement.textContent = stats.total;
+    if (pendingElement) pendingElement.textContent = stats.pending;
+    if (inProgressElement) inProgressElement.textContent = stats.inProgress;
+    if (resolvedElement) resolvedElement.textContent = stats.resolved;
+    if (resolutionRateElement) resolutionRateElement.textContent = `${stats.resolutionRate}%`;
+    if (resolutionProgressElement) resolutionProgressElement.style.width = `${stats.resolutionRate}%`;
+    
+  } catch (error) {
+    console.error('Error loading dashboard stats:', error);
+    // Fallback to calculating from allComplaints
+    updateDashboardStats();
+  }
+}
+
+// Update your initAdminDashboard function to use the new stats function
+async function initAdminDashboard() {
+  console.log('=== INITIALIZING ADMIN DASHBOARD ===');
   
-  if (modalTitle) modalTitle.textContent = `Complaint #${complaint.id}`;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  currentUser = checkAdminLogin();
+  if (!currentUser) {
+    console.error('Failed to get current user, stopping initialization');
+    return;
+  }
+  
+  console.log('✅ Current admin user set:', currentUser);
+  
+  // Set username
+  const username = currentUser.name || currentUser.username || currentUser.email || 'Admin User';
+  const userElement = document.getElementById('username');
+  const welcomeElement = document.getElementById('welcomeName');
+  
+  if (userElement) userElement.textContent = username;
+  if (welcomeElement) {
+    const firstName = username.split(' ')[0];
+    welcomeElement.textContent = firstName;
+  }
+  
+  // Load all data
+  console.log('Loading admin dashboard data...');
+  await loadAllComplaints();
+  await loadDashboardStats(); // Use the new function
+  loadStaffMembers();
+  loadSystemLogs();
+  
+  // Update dashboard
+  renderComplaintsTable();
+  renderStaffList();
+  renderSystemLogs();
+  initializeCharts();
+  updateNotificationBadge();
+  
+  console.log('✅ Admin dashboard initialization complete');
+}
+
+// View complaint details in modal
+function viewComplaintDetails(complaintId) {
+  // Find complaint - try both id and complaint_id fields
+  const complaint = allComplaints.find(c => c.id === complaintId || c.complaint_id === complaintId);
+  if (!complaint) {
+    console.error('Complaint not found with ID:', complaintId);
+    return;
+  }
+  
+  if (modalTitle) modalTitle.textContent = `Complaint #${complaint.id || complaint.complaint_id}`;
   
   if (modalBody) {
     modalBody.innerHTML = `
@@ -759,35 +866,39 @@ function viewComplaintDetails(id) {
       
       <div class="complaint-detail">
         <h4>Citizen Information</h4>
-        <p><strong>Name:</strong> ${complaint.citizenName}</p>
-        <p><strong>Email:</strong> ${complaint.citizenEmail}</p>
+        <p><strong>Name:</strong> ${complaint.citizenName || complaint.citizen_name || 'Unknown'}</p>
+        <p><strong>Email:</strong> ${complaint.citizenEmail || complaint.citizen_email || 'Not provided'}</p>
       </div>
       
       <div class="complaint-detail">
         <h4>Location Details</h4>
-        <p><strong>Location:</strong> ${complaint.location}</p>
-        <p><strong>Ward:</strong> ${complaint.ward}</p>
-        <p><strong>Zone:</strong> ${complaint.zone}</p>
+        <p><strong>Location:</strong> ${complaint.location || 'Not specified'}</p>
+        <p><strong>Ward:</strong> ${complaint.ward || 'Not specified'}</p>
+        <p><strong>Zone:</strong> ${complaint.zone || 'Not specified'}</p>
+        <p><strong>Area:</strong> ${complaint.areaName || complaint.area_name || 'Not specified'}</p>
       </div>
       
       <div class="complaint-detail">
         <h4>Assignment Information</h4>
         <p><strong>Department:</strong> ${complaint.department || 'Not Assigned'}</p>
-        <p><strong>Assigned Staff:</strong> ${complaint.assignedStaff || 'Not Assigned'}</p>
+        <p><strong>Assigned Staff:</strong> ${complaint.assignedStaff || complaint.assigned_staff_name || 'Not Assigned'}</p>
         <p><strong>Priority:</strong> ${complaint.priority || 'Not Set'}</p>
       </div>
       
       <div class="complaint-detail">
         <h4>Timeline</h4>
-        <p><strong>Reported:</strong> ${formatDateTime(complaint.reportedAt)}</p>
-        ${complaint.assignedAt ? `<p><strong>Assigned:</strong> ${formatDateTime(complaint.assignedAt)}</p>` : ''}
+        <p><strong>Reported:</strong> ${formatDateTime(complaint.reportedAt || complaint.created_at)}</p>
+        ${complaint.assigned_at ? `<p><strong>Assigned:</strong> ${formatDateTime(complaint.assigned_at)}</p>` : ''}
+        ${complaint.updated_at && complaint.updated_at !== (complaint.reportedAt || complaint.created_at) ? 
+          `<p><strong>Last Updated:</strong> ${formatDateTime(complaint.updated_at)}</p>` : ''}
       </div>
     `;
   }
   
   // Store complaint ID for assign button
   if (assignFromModalBtn) {
-    assignFromModalBtn.setAttribute('data-complaint-id', id);
+    const actualComplaintId = complaint.id || complaint.complaint_id;
+    assignFromModalBtn.setAttribute('data-complaint-id', actualComplaintId);
     assignFromModalBtn.style.display = complaint.status === 'Resolved' ? 'none' : 'inline-block';
   }
   
