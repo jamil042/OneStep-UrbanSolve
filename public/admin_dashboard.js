@@ -364,9 +364,49 @@ function generateMockStaff() {
 }
 
 // Load staff members
-function loadStaffMembers() {
-  staffMembers = generateMockStaff();
-  console.log('Loaded', staffMembers.length, 'staff members');
+async function loadStaffMembers() {
+  try {
+    console.log('Loading staff members from /api/admin/staff');
+    const response = await fetch('/api/admin/staff');
+    if (!response.ok) {
+      throw new Error('Failed to fetch staff: ' + response.status);
+    }
+    staffMembers = await response.json();
+    console.log('Loaded', staffMembers.length, 'staff members from database');
+    
+  } catch (error) {
+    console.error('Error loading staff members:', error);
+    // Fallback to mock data if API fails
+    staffMembers = generateMockStaff();
+    console.log('Using mock staff data as fallback');
+  }
+}
+
+async function loadDepartments() {
+  try {
+    console.log('Loading departments from /api/admin/departments');
+    const response = await fetch('/api/admin/departments');
+    if (!response.ok) {
+      throw new Error('Failed to fetch departments: ' + response.status);
+    }
+    const departments = await response.json();
+    console.log('Loaded', departments.length, 'departments from database');
+    
+    // Update department dropdown
+    if (assignDepartment) {
+      assignDepartment.innerHTML = '<option value="">Select department</option>';
+      departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.name;
+        option.textContent = dept.name;
+        assignDepartment.appendChild(option);
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error loading departments:', error);
+    // You might want to keep some default departments as fallback
+  }
 }
 
 // Load system logs
@@ -685,79 +725,83 @@ async function handleAssignmentSubmit(e) {
   if (!validateAssignmentForm() || !selectedComplaintId) return;
   
   try {
-  // Show loading state
-  const assignBtn = assignmentForm.querySelector('button[type="submit"]');
-  const assignBtnText = document.getElementById('assignBtnText');
-  const assignSpinner = document.getElementById('assignSpinner');
-  
-  if (assignBtn) assignBtn.disabled = true;
-  if (assignBtnText) assignBtnText.textContent = 'Assigning...';
-  if (assignSpinner) assignSpinner.style.display = 'inline-block';
-  
-  // Send assignment request to admin endpoint
-  const response = await fetch(`/api/admin/complaints/${selectedComplaintId}/assign`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      department: assignDepartment.value,
-      assignedStaff: assignStaff.value,
-      priority: assignPriority.value,
-      notes: assignNotes.value
-    })
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to assign complaint: ' + response.status);
-  }
-  
-  const result = await response.json();
-  
-  if (result.success) {
-    // Update local data
-    const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId);
-    if (complaintIndex !== -1) {
-      allComplaints[complaintIndex].department = assignDepartment.value;
-      allComplaints[complaintIndex].assignedStaff = assignStaff.value;
-      allComplaints[complaintIndex].priority = assignPriority.value;
-      allComplaints[complaintIndex].status = 'In Progress';
-      
-      // Add to system logs
-      const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
-      systemLogs.unshift({
-        id: Date.now(),
-        timestamp: new Date(),
-        action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
-        type: 'success'
-      });
+    // Show loading state
+    const assignBtn = assignmentForm.querySelector('button[type="submit"]');
+    const assignBtnText = document.getElementById('assignBtnText');
+    const assignSpinner = document.getElementById('assignSpinner');
+    
+    if (assignBtn) assignBtn.disabled = true;
+    if (assignBtnText) assignBtnText.textContent = 'Assigning...';
+    if (assignSpinner) assignSpinner.style.display = 'inline-block';
+    
+    // Send assignment request to admin endpoint
+    const response = await fetch(`/api/admin/complaints/${selectedComplaintId}/assign`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        department: assignDepartment.value,
+        assignedStaff: assignStaff.value,
+        priority: assignPriority.value,
+        notes: assignNotes.value
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to assign complaint');
     }
     
-    // Update UI
-    await loadDashboardStats(); // Refresh stats
-    renderComplaintsTable();
-    renderSystemLogs();
-    updateNotificationBadge();
+    const result = await response.json();
     
-    // Close form and show success
-    closeAssignmentForm();
-    alert(`Complaint #${selectedComplaintId} has been assigned successfully!`);
-  } else {
-    throw new Error(result.error || 'Failed to assign complaint');
-  }
-  
-} catch (error) {
-  console.error('Error assigning complaint:', error);
-  alert('Error assigning complaint. Please try again.');
-} finally {
-  // Reset button state
-  const assignBtn = assignmentForm.querySelector('button[type="submit"]');
-  const assignBtnText = document.getElementById('assignBtnText');
-  const assignSpinner = document.getElementById('assignSpinner');
-  
-  if (assignBtn) assignBtn.disabled = false;
-  if (assignBtnText) assignBtnText.textContent = 'Assign Complaint';
-  if (assignSpinner) assignSpinner.style.display = 'none';
+    if (result.success) {
+      // Update local data with the assignment details
+      const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
+      if (complaintIndex !== -1) {
+        allComplaints[complaintIndex].department = assignDepartment.value;
+        allComplaints[complaintIndex].assignedStaff = assignStaff.value;
+        allComplaints[complaintIndex].priority = assignPriority.value;
+        allComplaints[complaintIndex].status = 'In Progress';
+        
+        // Add to system logs
+        const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
+        systemLogs.unshift({
+          id: Date.now(),
+          timestamp: new Date(),
+          action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
+          type: 'success'
+        });
+      }
+      
+      // Refresh data from server to ensure consistency
+      await loadAllComplaints();
+      await loadDashboardStats();
+      
+      // Update UI
+      renderComplaintsTable();
+      renderSystemLogs();
+      updateNotificationBadge();
+      
+      // Close form and show success
+      closeAssignmentForm();
+      alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
+    } else {
+      throw new Error(result.error || 'Failed to assign complaint');
+    }
+    
+  } catch (error) {
+    console.error('Error assigning complaint:', error);
+    alert('Error assigning complaint: ' + error.message);
+  } finally {
+    // Reset button state
+    const assignBtn = assignmentForm.querySelector('button[type="submit"]');
+    const assignBtnText = document.getElementById('assignBtnText');
+    const assignSpinner = document.getElementById('assignSpinner');
+    
+    if (assignBtn) assignBtn.disabled = false;
+    if (assignBtnText) assignBtnText.textContent = 'Assign Complaint';
+    if (assignSpinner) assignSpinner.style.display = 'none';
   }
 }
 
@@ -823,8 +867,9 @@ async function initAdminDashboard() {
   // Load all data
   console.log('Loading admin dashboard data...');
   await loadAllComplaints();
-  await loadDashboardStats(); // Use the new function
-  loadStaffMembers();
+  await loadDashboardStats();
+  await loadStaffMembers(); // Changed to async
+  await loadDepartments(); // NEW: Load departments
   loadSystemLogs();
   
   // Update dashboard
