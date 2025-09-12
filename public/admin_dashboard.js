@@ -191,115 +191,6 @@ async function initAdminDashboard() {
   console.log('✅ Admin dashboard initialization complete');
 }
 
-// Generate mock complaints data
-function generateMockComplaints() {
-  const mockComplaints = [
-    {
-      id: 1001,
-      title: 'Water pipe burst on Main Street',
-      description: 'Large water pipe has burst causing flooding on Main Street near the shopping center.',
-      citizenName: 'Sarah Johnson',
-      citizenEmail: 'sarah.j@email.com',
-      reportedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: 'Pending',
-      department: null,
-      assignedStaff: null,
-      priority: null,
-      location: 'Main Street, Downtown',
-      zone: 'Central',
-      ward: 'Ward 1',
-      areaName: 'City Center',
-      problemType: 'Water Leak'
-    },
-    {
-      id: 1002,
-      title: 'Pothole causing vehicle damage',
-      description: 'Deep pothole on Oak Avenue is causing damage to vehicles. Multiple complaints received.',
-      citizenName: 'Mike Chen',
-      citizenEmail: 'mike.chen@email.com',
-      reportedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'In Progress',
-      department: 'Road Maintenance',
-      assignedStaff: 'John Smith',
-      priority: 'Medium',
-      location: 'Oak Avenue, Block 200',
-      zone: 'North',
-      ward: 'Ward 2',
-      areaName: 'Residential Area A',
-      problemType: 'Pothole'
-    },
-    {
-      id: 1003,
-      title: 'Street light not working',
-      description: 'Street light at Park Road intersection has been out for several days.',
-      citizenName: 'Lisa Wang',
-      citizenEmail: 'lisa.wang@email.com',
-      reportedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: 'Pending',
-      department: null,
-      assignedStaff: null,
-      priority: null,
-      location: 'Park Road Intersection',
-      zone: 'South',
-      ward: 'Ward 1',
-      areaName: 'Market Area',
-      problemType: 'Street Light'
-    },
-    {
-      id: 1004,
-      title: 'Water quality issue reported',
-      description: 'Citizens reporting unusual taste and color in water supply in residential area.',
-      citizenName: 'David Park',
-      citizenEmail: 'david.park@email.com',
-      reportedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      status: 'Resolved',
-      department: 'Water Management',
-      assignedStaff: 'Maria Garcia',
-      priority: 'High',
-      location: 'Green Park Colony',
-      zone: 'West',
-      ward: 'Ward 3',
-      areaName: 'Green Park',
-      problemType: 'Water Quality'
-    },
-    {
-      id: 1005,
-      title: 'Traffic signal malfunction',
-      description: 'Traffic signal at busy intersection is not working properly, causing traffic issues.',
-      citizenName: 'Emily Rodriguez',
-      citizenEmail: 'emily.r@email.com',
-      reportedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-      status: 'In Progress',
-      department: 'Electrical',
-      assignedStaff: 'Robert Johnson',
-      priority: 'High',
-      location: '5th Street & Market',
-      zone: 'Central',
-      ward: 'Ward 2',
-      areaName: 'Financial District',
-      problemType: 'Traffic Signal'
-    },
-    {
-      id: 1006,
-      title: 'Garbage collection missed',
-      description: 'Garbage has not been collected for the past week in residential area.',
-      citizenName: 'Tom Wilson',
-      citizenEmail: 'tom.wilson@email.com',
-      reportedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-      status: 'Pending',
-      department: null,
-      assignedStaff: null,
-      priority: null,
-      location: 'Sunset Avenue',
-      zone: 'East',
-      ward: 'Ward 4',
-      areaName: 'Residential Complex',
-      problemType: 'Sanitation'
-    }
-  ];
-  
-  return mockComplaints;
-}
 
 // Load all complaints
 async function loadAllComplaints() {
@@ -371,43 +262,33 @@ async function loadStaffMembers() {
     if (!response.ok) {
       throw new Error('Failed to fetch staff: ' + response.status);
     }
-    staffMembers = await response.json();
-    console.log('Loaded', staffMembers.length, 'staff members from database');
+    
+    const data = await response.json();
+    console.log('Loaded raw staff data:', data);
+    
+    // Map the received data to our expected format
+    staffMembers = data.map(staff => ({
+      id: staff.id,
+      name: staff.name,
+      email: staff.email,
+      phone: staff.phone,
+      department: staff.department,
+      status: staff.status,
+      active_assignments: staff.active_assignments || 0,
+      performance: staff.performance || 5.0
+    }));
+    
+    console.log('Processed', staffMembers.length, 'staff members from database');
     
   } catch (error) {
     console.error('Error loading staff members:', error);
-    // Fallback to mock data if API fails
-    staffMembers = generateMockStaff();
-    console.log('Using mock staff data as fallback');
+    // Don't fallback to mock data in production
+    staffMembers = [];
+    alert('Error loading staff members. Please refresh the page to try again.');
   }
 }
 
-async function loadDepartments() {
-  try {
-    console.log('Loading departments from /api/admin/departments');
-    const response = await fetch('/api/admin/departments');
-    if (!response.ok) {
-      throw new Error('Failed to fetch departments: ' + response.status);
-    }
-    const departments = await response.json();
-    console.log('Loaded', departments.length, 'departments from database');
-    
-    // Update department dropdown
-    if (assignDepartment) {
-      assignDepartment.innerHTML = '<option value="">Select department</option>';
-      departments.forEach(dept => {
-        const option = document.createElement('option');
-        option.value = dept.name;
-        option.textContent = dept.name;
-        assignDepartment.appendChild(option);
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error loading departments:', error);
-    // You might want to keep some default departments as fallback
-  }
-}
+// Load system logs
 
 // Load system logs
 function loadSystemLogs() {
@@ -609,46 +490,101 @@ function formatDateTime(dateString) {
 }
 
 // Open assignment form
-function openAssignmentForm(complaintId) {
-  const complaint = allComplaints.find(c => c.id === complaintId || c.complaint_id === complaintId);
-  if (!complaint) {
-    console.error('Complaint not found with ID:', complaintId);
-    return;
+async function openAssignmentForm(complaintId) {
+  try {
+    const complaint = allComplaints.find(c => c.id === complaintId || c.complaint_id === complaintId);
+    if (!complaint) {
+      console.error('Complaint not found with ID:', complaintId);
+      return;
+    }
+    
+    selectedComplaintId = complaint.id || complaint.complaint_id;
+    
+    // Update selected complaint info
+    if (selectedComplaintInfo) {
+      selectedComplaintInfo.innerHTML = `
+        <h4>Complaint #${selectedComplaintId}</h4>
+        <p><strong>${complaint.title}</strong></p>
+        <p>Reported by: ${complaint.citizenName || complaint.citizen_name || 'Unknown'}</p>
+        <p>Location: ${complaint.location || 'Unknown location'}</p>
+        <p>Current Status: <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
+      `;
+    }
+    
+    // Use fixed departments list
+    const departments = [
+      { id: 1, name: 'WATER' },
+      { id: 2, name: 'ROADS' },
+      { id: 3, name: 'WASTE' },
+      { id: 4, name: 'ELECTRICITY' },
+      { id: 5, name: 'GENERAL' }
+    ];
+
+    // Load staff members
+    const staffResponse = await fetch('/api/admin/staff');
+    if (!staffResponse.ok) throw new Error('Failed to fetch staff');
+    const staffMembers = await staffResponse.json();
+    
+    // Clear and populate department dropdown
+    if (assignDepartment) {
+      assignDepartment.innerHTML = '<option value="">Select Department</option>';
+      departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.name;
+        option.textContent = dept.name;
+        assignDepartment.appendChild(option);
+      });
+    }
+    
+    // Store staff members globally for the dropdown update function
+    window.availableStaff = staffMembers;
+    
+    // Set up staff dropdown with initial list
+    if (assignStaff) {
+      assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
+      staffMembers.forEach(staff => {
+        if (staff.status === 'available') {
+          const option = document.createElement('option');
+          option.value = staff.name;
+          option.textContent = `${staff.name} (${staff.active_assignments || 0} active cases)`;
+          assignStaff.appendChild(option);
+        }
+      });
+    }
+    
+    // Pre-fill form if already assigned
+    if (complaint.department && assignDepartment) {
+      assignDepartment.value = complaint.department;
+    }
+    
+    if (complaint.assignedStaff && assignStaff) {
+      assignStaff.value = complaint.assignedStaff;
+    }
+    
+    // Set up priority options
+    if (assignPriority) {
+      assignPriority.innerHTML = `
+        <option value="">Select Priority</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      `;
+      
+      if (complaint.priority) {
+        assignPriority.value = complaint.priority;
+      }
+    }
+    
+    // Show form
+    if (assignmentFormContainer) {
+      assignmentFormContainer.classList.add('show');
+    }
+    if (assignDepartment) assignDepartment.focus();
+    
+  } catch (error) {
+    console.error('Error opening assignment form:', error);
+    alert('Error loading departments and staff. Please try again.');
   }
-  
-  selectedComplaintId = complaint.id || complaint.complaint_id;
-  
-  // Update selected complaint info
-  if (selectedComplaintInfo) {
-    selectedComplaintInfo.innerHTML = `
-      <h4>Complaint #${selectedComplaintId}</h4>
-      <p><strong>${complaint.title}</strong></p>
-      <p>Reported by: ${complaint.citizenName || complaint.citizen_name || 'Unknown'}</p>
-      <p>Location: ${complaint.location || 'Unknown location'}</p>
-      <p>Current Status: <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
-    `;
-  }
-  
-  // Update staff dropdown based on department
-  updateStaffDropdown();
-  
-  // Pre-fill form if already assigned
-  if (complaint.department && assignDepartment) {
-    assignDepartment.value = complaint.department;
-    updateStaffDropdown();
-  }
-  if (complaint.assignedStaff && assignStaff) {
-    assignStaff.value = complaint.assignedStaff;
-  }
-  if (complaint.priority && assignPriority) {
-    assignPriority.value = complaint.priority;
-  }
-  
-  // Show form
-  if (assignmentFormContainer) {
-    assignmentFormContainer.classList.add('show');
-  }
-  if (assignDepartment) assignDepartment.focus();
 }
 
 // Close assignment form
@@ -662,21 +598,44 @@ function closeAssignmentForm() {
 }
 
 // Update staff dropdown based on selected department
-function updateStaffDropdown() {
+async function updateStaffDropdown() {
   if (!assignStaff || !assignDepartment) return;
   
-  const selectedDepartment = assignDepartment.value;
-  const departmentStaff = staffMembers.filter(staff => 
-    staff.department === selectedDepartment
-  );
-  
-  assignStaff.innerHTML = '<option value="">Select staff member</option>';
-  departmentStaff.forEach(staff => {
+  try {
+    const selectedDepartment = assignDepartment.value;
+    
+    // Clear and set default option
+    assignStaff.innerHTML = '<option value="">Select staff member</option>';
+    
+    if (!selectedDepartment) return;
+    
+    // Filter available staff by matching department from the staffMembers array
+    const departmentStaff = window.availableStaff.filter(staff => 
+      staff.department === selectedDepartment
+    );
+    
+    // Add all staff to dropdown
+    window.availableStaff.forEach(staff => {
+      const option = document.createElement('option');
+      option.value = staff.name;
+      option.textContent = staff.name;
+      assignStaff.appendChild(option);
+    });
+    
+    // Show message if no staff available
+    if (window.availableStaff.length === 0) {
+      const option = document.createElement('option');
+      option.disabled = true;
+      option.textContent = 'No staff members available';
+      assignStaff.appendChild(option);
+    }
+  } catch (error) {
+    console.error('Error updating staff dropdown:', error);
     const option = document.createElement('option');
-    option.value = staff.name;
-    option.textContent = `${staff.name} (${staff.status})`;
+    option.disabled = true;
+    option.textContent = 'Error loading staff members';
     assignStaff.appendChild(option);
-  });
+  }
 }
 
 // Clear form errors
@@ -756,9 +715,9 @@ async function handleAssignmentSubmit(e) {
     const result = await response.json();
     
     if (result.success) {
-      // Update local data with the assignment details
-      const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
-      if (complaintIndex !== -1) {
+    // Update local data with the assignment details
+    const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
+    if (complaintIndex !== -1) {
         allComplaints[complaintIndex].department = assignDepartment.value;
         allComplaints[complaintIndex].assignedStaff = assignStaff.value;
         allComplaints[complaintIndex].priority = assignPriority.value;
@@ -767,25 +726,25 @@ async function handleAssignmentSubmit(e) {
         // Add to system logs
         const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
         systemLogs.unshift({
-          id: Date.now(),
-          timestamp: new Date(),
-          action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
-          type: 'success'
+            id: Date.now(),
+            timestamp: new Date(),
+            action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
+            type: 'success'
         });
-      }
-      
-      // Refresh data from server to ensure consistency
-      await loadAllComplaints();
-      await loadDashboardStats();
-      
-      // Update UI
-      renderComplaintsTable();
-      renderSystemLogs();
-      updateNotificationBadge();
-      
-      // Close form and show success
-      closeAssignmentForm();
-      alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
+    }
+    
+    // Refresh data from server to ensure consistency
+    await loadAllComplaints();
+    await loadDashboardStats();
+    
+    // Update UI
+    renderComplaintsTable();
+    renderSystemLogs();
+    updateNotificationBadge();
+    
+    // Close form and show success
+    closeAssignmentForm();
+    alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
     } else {
       throw new Error(result.error || 'Failed to assign complaint');
     }
@@ -869,7 +828,6 @@ async function initAdminDashboard() {
   await loadAllComplaints();
   await loadDashboardStats();
   await loadStaffMembers(); // Changed to async
-  await loadDepartments(); // NEW: Load departments
   loadSystemLogs();
   
   // Update dashboard
@@ -971,10 +929,11 @@ function initializeDepartmentChart() {
   if (!ctx) return;
   
   const departmentCounts = {
-    'Water Management': 0,
-    'Road Maintenance': 0,
-    'Electrical': 0,
-    'Sanitation': 0,
+    'WATER': 0,
+    'ROADS': 0,
+    'WASTE': 0,
+    'ELECTRICITY': 0,
+    'GENERAL': 0,
     'Unassigned': 0
   };
   

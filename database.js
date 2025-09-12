@@ -4,7 +4,10 @@ const connection = mysql.createConnection({
   host: 'localhost',
   user: 'root',
   password: 'as2023jamil14102',
-  database: 'urbansolve'
+  database: 'project',
+  waitForConnections: true,
+  connectionLimit: 10,
+    queueLimit: 0
 });
 
 connection.connect((err) => {
