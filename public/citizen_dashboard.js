@@ -68,6 +68,7 @@ let notifications = [
 let currentUser = null;
 
 // FIXED: Improved login check with retry mechanism
+// FIXED: Improved login check without hardcoded fallback
 function checkLogin() {
   console.log('=== CHECKING LOGIN STATUS ===');
   
@@ -105,36 +106,26 @@ function checkLogin() {
   
   console.log('Final user object:', user);
   
-  // FIXED: More lenient validation - check for either id or other identifying fields
   if (!user) {
     console.error('No user data found in storage');
     showLoginError('No user session found. Please login again.');
     return null;
   }
   
-  // Check for user ID (try different possible field names)
+  // FIXED: Properly handle different ID field names from backend
   const userId = user.id || user.user_id || user.userId;
   if (!userId) {
     console.error('User object missing ID field:', user);
     console.log('Available user fields:', Object.keys(user));
-    
-    // TEMPORARY FIX: If we have email but no ID, create a temporary ID
-    if (user.email) {
-      console.warn('User has email but no ID, creating temporary session...');
-      user.id = 1; // Temporary fallback
-      sessionStorage.setItem('user', JSON.stringify(user));
-      console.log('Added temporary ID to user:', user);
-    } else {
-      showLoginError('Invalid user session. Please login again.');
-      return null;
-    }
+    showLoginError('Invalid user session. Please login again.');
+    return null;
   }
   
-  // Ensure user.id is set properly
+  // FIXED: Normalize the ID field to 'id' for consistency
   if (!user.id && userId) {
     user.id = userId;
     sessionStorage.setItem('user', JSON.stringify(user));
-    console.log('Normalized user ID field:', user);
+    console.log('Normalized user ID field:', user.id);
   }
   
   console.log('✅ Login check passed. User ID:', user.id);

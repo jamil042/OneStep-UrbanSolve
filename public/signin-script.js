@@ -59,15 +59,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok && result.success) {
                 // FIXED: Ensure user data has all required fields
                 const userData = {
-                    id: result.user.id,           // ← CRITICAL: Ensure this exists
+                    id: result.user.user_id,           // ← CRITICAL: Ensure this exists
                     name: result.user.name,
                     email: result.user.email,
-                    role: result.user.role
+                    role: result.user.role,
+                    nid: result.user.nid,
+                    contact: result.user.contact
                 };
                 
                 console.log('=== SIGNIN SUCCESS ===');
                 console.log('Backend response user:', result.user);
-                console.log('User ID from backend:', result.user.id);
+                console.log('User ID from backend:', result.user.user_id);
                 
                 // Store user data in sessionStorage AND localStorage for reliability
                 sessionStorage.setItem('user', JSON.stringify(userData));
