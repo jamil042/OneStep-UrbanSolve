@@ -162,218 +162,111 @@ router.get('/departments', (req, res) => {
 });
 // Update complaint status (for assignment functionality)
 router.put('/complaints/:id/assign', (req, res) => {
-    try {
-        const complaintId = req.params.id;
-        const { department, assignedStaff, priority, notes } = req.body;
-        
-        console.log('=== ADMIN COMPLAINT ASSIGNMENT ===');
-        console.log('Assigning complaint', complaintId, 'to staff:', assignedStaff);
-        console.log('Department:', department, 'Priority:', priority, 'Notes:', notes);
-        
-        // First, get the staff ID from the staff name
-        const getStaffIdQuery = 'SELECT user_id FROM Users WHERE name = ? AND role = "staff"';
-        
-        pool.query(getStaffIdQuery, [assignedStaff], (err, staffResults) => {
+    const { department, assignedStaff, priority, notes } = req.body;
+    const complaintId = req.params.id;
+
+    console.log('=== ADMIN COMPLAINT ASSIGNMENT ===');
+    console.log(`Assigning complaint #${complaintId} to staff: ${assignedStaff} with priority: ${priority}`);
+    
+    // Get a connection from the pool
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting database connection:', err);
+            return res.status(500).json({ error: 'Database connection error: ' + err.message });
+        }
+
+        // Begin transaction
+        connection.beginTransaction((err) => {
             if (err) {
-                console.error('Database error during staff lookup:', err);
-                return res.status(500).json({ error: 'Error finding staff member: ' + err.message });
+                connection.release();
+                console.error('Error beginning transaction:', err);
+                return res.status(500).json({ error: 'Transaction error: ' + err.message });
             }
-            
-            if (staffResults.length === 0) {
-                return res.status(404).json({ error: 'Staff member not found' });
-            }
-            
-            const staffId = staffResults[0].user_id;
-            
-            // Get department ID
-            const getDeptIdQuery = 'SELECT dept_id FROM Departments WHERE name = ?';
-            
-            pool.query(getDeptIdQuery, [department], (err, deptResults) => {
+
+            // 1. Get staff ID from staff name
+            const getStaffIdQuery = 'SELECT user_id FROM Users WHERE name = ? AND role = "staff"';
+            connection.query(getStaffIdQuery, [assignedStaff], (err, staffResults) => {
                 if (err) {
-                    console.error('Database error during department lookup:', err);
-                    return res.status(500).json({ error: 'Error finding department: ' + err.message });
+                    return connection.rollback(() => {
+                        connection.release();
+                        console.error('Error finding staff member:', err);
+                        res.status(500).json({ error: 'Error finding staff member: ' + err.message });
+                    });
                 }
                 
-                let deptId = null;
-                if (deptResults.length > 0) {
-                    deptId = deptResults[0].dept_id;
+                if (staffResults.length === 0) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(404).json({ error: 'Staff member not found' });
+                    });
                 }
                 
-                // Begin transaction
-                pool.getConnection((err, connection) => {
+                const staffId = staffResults[0].user_id;
+
+                // 2. Update complaint status and priority
+                const updateComplaintQuery = `
+                    UPDATE Complaints 
+                    SET status = 'In Progress', priority = ?, updated_at = NOW()
+                    WHERE complaint_id = ?
+                `;
+                connection.query(updateComplaintQuery, [priority, complaintId], (err) => {
                     if (err) {
-                        console.error('Error getting database connection:', err);
-                        return res.status(500).json({ error: 'Database connection error' });
-                    }
-                    
-                    connection.beginTransaction(async (err) => {
-                        if (err) {
+                        return connection.rollback(() => {
                             connection.release();
-                            console.error('Error beginning transaction:', err);
-                            return res.status(500).json({ error: 'Transaction error' });
-                        }
-                        
-                        try {
-                            try {
-                            // 1. Insert into staff_assignments table
-                            const insertAssignmentQuery = `
-                                INSERT INTO staff_assignments 
-                                (complaint_id, staff_id, assigned_at, progress_notes, status_update) 
-                                VALUES (?, ?, NOW(), ?, 'In Progress')
-                            `;
-                            
-                            connection.query(insertAssignmentQuery, 
-                                [complaintId, staffId, notes || ''], 
-                                (err, assignmentResult) => {
-                                    if (err) {
-                                        connection.rollback(() => {
-                                            connection.release();
-                                            console.error('Error inserting assignment:', err);
-                                            res.status(500).json({ error: 'Failed to assign complaint: ' + err.message });
-                                        });
-                                        return;
-                                    }
+                            console.error('Error updating complaint status:', err);
+                            res.status(500).json({ error: 'Error updating complaint status: ' + err.message });
+                        });
+                    }
 
-                                    // 2. Update complaint status
-                                    const updateComplaintQuery = `
-                                        UPDATE Complaints 
-                                        SET status = 'In Progress', 
-                                            updated_at = NOW() 
-                                        WHERE complaint_id = ?
-                                    `;
-
-                                    connection.query(updateComplaintQuery, [complaintId], 
-                                        (err, complaintResult) => {
-                                            if (err) {
-                                                connection.rollback(() => {
-                                                    connection.release();
-                                                    console.error('Error updating complaint:', err);
-                                                    res.status(500).json({ error: 'Failed to update complaint: ' + err.message });
-                                                });
-                                                return;
-                                            }
-
-                                            // Commit transaction
-                                            connection.commit((err) => {
-                                                if (err) {
-                                                    connection.rollback(() => {
-                                                        connection.release();
-                                                        console.error('Error committing transaction:', err);
-                                                        res.status(500).json({ error: 'Failed to commit changes: ' + err.message });
-                                                    });
-                                                    return;
-                                                }
-
-                                                connection.release();
-                                                res.json({ 
-                                                    success: true, 
-                                                    message: 'Complaint assigned successfully' 
-                                                });
-                                            });
-                                        }
-                                    );
-                                }
-                            );
-                        } catch (error) {
-                            connection.rollback(() => {
+                    // 3. Insert into staff_assignments table
+                    const insertAssignmentQuery = `
+                        INSERT INTO staff_assignments 
+                        (complaint_id, staff_id, assigned_at, progress_notes, status_update) 
+                        VALUES (?, ?, NOW(), ?, 'In Progress')
+                    `;
+                    connection.query(insertAssignmentQuery, [complaintId, staffId, notes || ''], (err) => {
+                        if (err) {
+                            return connection.rollback(() => {
                                 connection.release();
-                                console.error('Error in assignment transaction:', error);
-                                res.status(500).json({ error: 'Transaction failed: ' + error.message });
+                                console.error('Error inserting assignment:', err);
+                                res.status(500).json({ error: 'Error inserting assignment: ' + err.message });
                             });
                         }
-                            const updateComplaintQuery = `
-                                UPDATE Complaints 
-                                SET status = 'In Progress', priority = ?, updated_at = NOW()
-                                WHERE complaint_id = ?
-                            `;
-                            
-                            await connection.query(updateComplaintQuery, [priority, complaintId]);
-                            
-                            // 2. Insert or update staff assignment
-                            const checkAssignmentQuery = `
-                                SELECT * FROM Staff_Assignments 
-                                WHERE complaint_id = ? AND staff_id = ?
-                            `;
-                            
-                            const assignmentResults = await connection.query(checkAssignmentQuery, [complaintId, staffId]);
-                            
-                            if (assignmentResults.length > 0) {
-                                // Update existing assignment
-                                const updateAssignmentQuery = `
-                                    UPDATE Staff_Assignments 
-                                    SET progress_notes = CONCAT(IFNULL(progress_notes, ''), '\n', ?),
-                                        status_update = 'Assigned',
-                                        assigned_at = NOW()
-                                    WHERE complaint_id = ? AND staff_id = ?
-                                `;
-                                await connection.query(updateAssignmentQuery, [
-                                    `Reassigned on ${new Date().toISOString()}: ${notes || 'No notes provided'}`,
-                                    complaintId,
-                                    staffId
-                                ]);
-                            } else {
-                                // Insert new assignment
-                                const insertAssignmentQuery = `
-                                    INSERT INTO Staff_Assignments 
-                                    (complaint_id, staff_id, progress_notes, status_update, assigned_at)
-                                    VALUES (?, ?, ?, 'Assigned', NOW())
-                                `;
-                                await connection.query(insertAssignmentQuery, [
-                                    complaintId,
-                                    staffId,
-                                    `Assigned on ${new Date().toISOString()}: ${notes || 'No notes provided'}`
-                                ]);
+                        
+                        // 4. Add to status history
+                        const statusHistoryQuery = `
+                            INSERT INTO Complaint_Status_History 
+                            (complaint_id, staff_id, status, updated_by)
+                            VALUES (?, ?, 'In Progress', ?)
+                        `;
+                        connection.query(statusHistoryQuery, [complaintId, staffId, staffId], (err) => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    connection.release();
+                                    console.error('Error inserting status history:', err);
+                                    res.status(500).json({ error: 'Error inserting status history: ' + err.message });
+                                });
                             }
-                            
-                            // 3. Add to status history
-                            const statusHistoryQuery = `
-                                INSERT INTO Complaint_Status_History 
-                                (complaint_id, staff_id, status, updated_by)
-                                VALUES (?, ?, 'In Progress', ?)
-                            `;
-                            await connection.query(statusHistoryQuery, [complaintId, staffId, staffId]);
-                            
+
                             // Commit transaction
                             connection.commit((err) => {
                                 if (err) {
                                     return connection.rollback(() => {
                                         connection.release();
                                         console.error('Error committing transaction:', err);
-                                        res.status(500).json({ error: 'Transaction commit error' });
+                                        res.status(500).json({ error: 'Error committing transaction: ' + err.message });
                                     });
                                 }
-                                
+
                                 connection.release();
-                                console.log('Complaint', complaintId, 'assigned successfully to staff', staffId);
-                                
-                                res.json({ 
-                                    success: true,
-                                    message: 'Complaint assigned successfully',
-                                    data: {
-                                        complaintId: complaintId,
-                                        staffId: staffId,
-                                        staffName: assignedStaff,
-                                        department: department,
-                                        priority: priority
-                                    }
-                                });
+                                console.log('Complaint', complaintId, 'assigned successfully.');
+                                res.json({ success: true, message: 'Complaint assigned successfully' });
                             });
-                            
-                        } catch (error) {
-                            connection.rollback(() => {
-                                connection.release();
-                                console.error('Error during assignment transaction:', error);
-                                res.status(500).json({ error: 'Assignment transaction error: ' + error.message });
-                            });
-                        }
+                        });
                     });
                 });
             });
         });
-    } catch (error) {
-        console.error('Admin complaint assignment error:', error);
-        res.status(500).json({ error: 'Server error during complaint assignment: ' + error.message });
-    }
+    });
 });
-
 module.exports = router;
