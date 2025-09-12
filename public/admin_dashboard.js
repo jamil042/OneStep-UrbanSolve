@@ -743,8 +743,9 @@ async function handleAssignmentSubmit(e) {
       updateNotificationBadge();
       
       // Close form and show success
-      closeAssignmentForm();
+      
       alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
+      closeAssignmentForm();
     } else {
       throw new Error(result.error || 'Failed to assign complaint');
     }
