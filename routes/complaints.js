@@ -260,4 +260,47 @@ router.get('/complaints/:userId/stats', (req, res) => {
     }
 });
 
+router.get('/complaints/staff/:staffId', (req, res) => {
+    const { staffId } = req.params;
+    console.log(`=== FETCHING COMPLAINTS FOR STAFF ID: ${staffId} ===`);
+
+    try {
+        const query = `
+            SELECT 
+                c.complaint_id as id,
+                c.title,
+                c.description,
+                c.status,
+                c.priority,
+                sa.assigned_at as assignedAt,
+                c.created_at as reportedAt,
+                u_citizen.name as citizenName,
+                p.problem_name as problemType,
+                CONCAT(l.area_name, ', ', l.ward) as location
+            FROM Staff_Assignments sa
+            JOIN Complaints c ON sa.complaint_id = c.complaint_id
+            JOIN Users u_citizen ON c.user_id = u_citizen.user_id
+            JOIN Locations l ON c.location_id = l.location_id
+            JOIN Problem p ON c.problem_id = p.problem_id
+            WHERE sa.staff_id = ?
+            ORDER BY sa.assigned_at DESC;
+        `;
+
+        pool.query(query, [staffId], (err, results) => {
+            if (err) {
+                console.error('Database error fetching staff complaints:', err);
+                return res.status(500).json({ error: 'Error fetching assigned complaints: ' + err.message });
+            }
+
+            console.log('Found', results.length, 'complaints for staff ID:', staffId);
+            res.json(results);
+        });
+    } catch (error) {
+        console.error('Server error during staff complaints fetch:', error);
+        res.status(500).json({ error: 'Server error: ' + error.message });
+    }
+});
+
+
+
 module.exports = router;
