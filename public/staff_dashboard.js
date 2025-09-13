@@ -449,6 +449,8 @@ function validateUpdateForm() {
 }
 
 // Handle update form submission
+// staff_dashboard.js
+
 async function handleUpdateSubmit(e) {
   e.preventDefault();
   
@@ -460,36 +462,40 @@ async function handleUpdateSubmit(e) {
   if (updateSpinner) updateSpinner.style.display = 'inline-block';
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Find and update the complaint
-    const complaintIndex = assignedComplaints.findIndex(c => c.id === selectedComplaintId);
-    if (complaintIndex !== -1) {
-      assignedComplaints[complaintIndex].status = updateStatus.value;
-      assignedComplaints[complaintIndex].lastUpdated = new Date().toISOString();
-      
-      // Add to recent updates with staff name
-      const staffName = currentUser ? (currentUser.name || currentUser.username || 'Staff') : 'Staff';
-      recentUpdates.unshift({
-        id: Date.now(),
-        date: formatDateTime(new Date()),
-        message: `${staffName} updated complaint #${selectedComplaintId} to "${updateStatus.value}": ${updateNotes.value.substring(0, 50)}...`
-      });
+    // This is the REAL API call to the endpoint you just created
+    const response = await fetch(`/api/complaints/${selectedComplaintId}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            status: updateStatus.value,
+            notes: updateNotes.value,
+            staffId: currentUser.id // Pass the logged-in staff member's ID
+        }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update complaint on the server.');
     }
-    
-    // Update UI
-    updateDashboardStats();
-    renderComplaintsTable();
-    renderRecentUpdates();
-    
-    // Close form and show success
-    closeUpdateForm();
-    alert(`Complaint #${selectedComplaintId} has been updated successfully!`);
+
+    const result = await response.json();
+
+    if (result.success) {
+        // Refresh data from server to ensure UI is in sync
+        await refreshComplaints();
+        
+        // Close form and show success
+        closeUpdateForm();
+        alert(`Complaint #${selectedComplaintId} has been updated successfully!`);
+    } else {
+        throw new Error(result.message || 'An unknown error occurred.');
+    }
     
   } catch (error) {
     console.error('Error updating complaint:', error);
-    alert('Error updating complaint. Please try again.');
+    alert('Error updating complaint: ' + error.message);
   } finally {
     // Reset button state
     if (updateBtn) updateBtn.disabled = false;
@@ -497,7 +503,6 @@ async function handleUpdateSubmit(e) {
     if (updateSpinner) updateSpinner.style.display = 'none';
   }
 }
-
 // View complaint details in modal
 function viewComplaintDetails(id) {
   const complaint = assignedComplaints.find(c => c.id === id);

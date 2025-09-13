@@ -301,6 +301,69 @@ router.get('/complaints/staff/:staffId', (req, res) => {
     }
 });
 
+// UPDATE a complaint's status
+router.put('/complaints/:complaintId/status', (req, res) => {
+    const { complaintId } = req.params;
+    const { status, notes, staffId } = req.body; // We'll send these from the frontend
 
+    console.log(`=== UPDATING COMPLAINT #${complaintId} TO STATUS: ${status} BY STAFF ID: ${staffId} ===`);
+
+    if (!status || !notes || !staffId) {
+        return res.status(400).json({ error: 'Missing required fields: status, notes, staffId' });
+    }
+
+    // Use a transaction to ensure both updates succeed or fail together
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting database connection:', err);
+            return res.status(500).json({ error: 'Database connection error' });
+        }
+
+        connection.beginTransaction(err => {
+            if (err) {
+                connection.release();
+                return res.status(500).json({ error: 'Failed to start transaction' });
+            }
+
+            // 1. Update the main Complaints table
+            const updateComplaintQuery = 'UPDATE Complaints SET status = ?, updated_at = NOW() WHERE complaint_id = ?';
+            connection.query(updateComplaintQuery, [status, complaintId], (err, results) => {
+                if (err) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        console.error('Error updating complaints table:', err);
+                        res.status(500).json({ error: 'Failed to update complaint status' });
+                    });
+                }
+
+                // 2. Add a record to the status history table
+              const historyQuery = 'INSERT INTO Complaint_Status_History (complaint_id, status, updated_by) VALUES (?, ?, ?)';
+connection.query(historyQuery, [complaintId, status, staffId], (err, results) => {
+    if (err) {
+        return connection.rollback(() => {
+            connection.release();
+            console.error('Error inserting into status history:', err);
+            res.status(500).json({ error: 'Failed to log status update' });
+        });
+    }
+
+                    connection.commit(err => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                connection.release();
+                                console.error('Error committing transaction:', err);
+                                res.status(500).json({ error: 'Failed to commit changes' });
+                            });
+                        }
+
+                        console.log(`✅ Complaint #${complaintId} successfully updated.`);
+                        connection.release();
+                        res.json({ success: true, message: 'Complaint updated successfully' });
+                    });
+                });
+            });
+        });
+    });
+});
 
 module.exports = router;
