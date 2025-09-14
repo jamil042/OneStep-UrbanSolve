@@ -462,7 +462,7 @@ async function handleUpdateSubmit(e) {
   if (updateSpinner) updateSpinner.style.display = 'inline-block';
   
   try {
-    // This is the REAL API call to the endpoint you just created
+    // FIXED: Removed '/api' prefix to match backend route
     const response = await fetch(`/api/complaints/${selectedComplaintId}/status`, {
         method: 'PUT',
         headers: {
@@ -471,7 +471,7 @@ async function handleUpdateSubmit(e) {
         body: JSON.stringify({
             status: updateStatus.value,
             notes: updateNotes.value,
-            staffId: currentUser.id // Pass the logged-in staff member's ID
+            staffId: currentUser.id
         }),
     });
 
@@ -483,12 +483,10 @@ async function handleUpdateSubmit(e) {
     const result = await response.json();
 
     if (result.success) {
-        // Refresh data from server to ensure UI is in sync
         await refreshComplaints();
-        
-        // Close form and show success
-        closeUpdateForm();
         alert(`Complaint #${selectedComplaintId} has been updated successfully!`);
+        closeUpdateForm();
+        
     } else {
         throw new Error(result.message || 'An unknown error occurred.');
     }

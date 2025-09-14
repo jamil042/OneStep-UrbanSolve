@@ -33,6 +33,7 @@ app.use(express.static('.'));
 // API routes
 app.use('/api', authRoutes);
 app.use('/api', complaintsRoutes);
+app.use('/api/complaints', complaintsRoutes); 
 app.use('/api/admin', adminRoutes);
 
 // Serve pages
