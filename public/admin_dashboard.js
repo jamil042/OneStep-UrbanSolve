@@ -714,10 +714,19 @@ async function handleAssignmentSubmit(e) {
     
     const result = await response.json();
     
-    if (result.success) {
-      // Update local data with the assignment details
-      const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
-      if (complaintIndex !== -1) {
+    // ... inside handleAssignmentSubmit
+if (result.success) {
+    // Option 1: Trust the server response and update UI
+    // The server response `result` could contain the updated complaint object.
+    // If it does, you can update the local array and render without re-fetching everything.
+    // However, since the current code re-fetches, we will correct that logic.
+
+    // Option 2: Ensure re-fetch completes before re-render (safer approach)
+
+    // First, update the local data temporarily for a smooth UI transition.
+    // This part is already correct.
+    const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
+    if (complaintIndex !== -1) {
         allComplaints[complaintIndex].department = assignDepartment.value;
         allComplaints[complaintIndex].assignedStaff = assignStaff.value;
         allComplaints[complaintIndex].priority = assignPriority.value;
@@ -726,27 +735,28 @@ async function handleAssignmentSubmit(e) {
         // Add to system logs
         const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
         systemLogs.unshift({
-          id: Date.now(),
-          timestamp: new Date(),
-          action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
-          type: 'success'
+            id: Date.now(),
+            timestamp: new Date(),
+            action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
+            type: 'success'
         });
-      }
-      
-      // Refresh data from server to ensure consistency
-      await loadAllComplaints();
-      await loadDashboardStats();
-      
-      // Update UI
-      renderComplaintsTable();
-      renderSystemLogs();
-      updateNotificationBadge();
-      
-      // Close form and show success
-      
-      alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
-      closeAssignmentForm();
-    } else {
+    }
+
+    // Await both promises to ensure data is fresh.
+    await loadAllComplaints(); // This will fetch the latest data from the server
+    await loadDashboardStats(); // This will update the stats from the server
+    
+    // Now that the data is guaranteed to be up-to-date, re-render the UI.
+    renderComplaintsTable();
+    renderSystemLogs();
+    updateNotificationBadge();
+    
+    // Close form and show success
+    alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
+    closeAssignmentForm();
+}
+// ...
+    else {
       throw new Error(result.error || 'Failed to assign complaint');
     }
     

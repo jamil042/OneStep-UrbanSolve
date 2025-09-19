@@ -8,22 +8,27 @@ router.get('/complaints', (req, res) => {
         console.log('=== ADMIN COMPLAINTS FETCH ===');
         
         const query = `
-            SELECT 
+            SELECT
                 c.complaint_id as id,
                 c.title,
                 c.description,
                 c.status,
                 c.created_at as reportedAt,
                 c.updated_at,
-                u.name as citizenName,
-                u.email as citizenEmail,
+                c.priority,
+                sa.department,
+                u_citizen.name as citizenName,
+                u_citizen.email as citizenEmail,
+                u_staff.name as assignedStaff,
                 l.zone,
                 l.ward,
                 l.area_name as areaName,
                 p.problem_name as problemType,
                 CONCAT(l.area_name, ', ', l.ward, ', ', l.zone) as location
             FROM Complaints c
-            JOIN users u ON c.user_id = u.user_id
+            JOIN users u_citizen ON c.user_id = u_citizen.user_id
+            LEFT JOIN staff_assignments sa ON c.complaint_id = sa.complaint_id
+            LEFT JOIN users u_staff ON sa.staff_id = u_staff.user_id
             JOIN Locations l ON c.location_id = l.location_id
             JOIN Problem p ON c.problem_id = p.problem_id
             ORDER BY c.created_at DESC
@@ -46,13 +51,10 @@ router.get('/complaints', (req, res) => {
                 citizenEmail: complaint.citizenEmail,
                 reportedAt: complaint.reportedAt,
                 status: complaint.status,
-                department: null, // Will be set when assignment functionality is added
-                assignedStaff: null, // Will be set when assignment functionality is added
-                priority: null, // Will be set when assignment functionality is added
+                department: complaint.department,
+                assignedStaff: complaint.assignedStaff,
+                priority: complaint.priority,
                 location: complaint.location,
-                zone: complaint.zone,
-                ward: complaint.ward,
-                areaName: complaint.areaName,
                 problemType: complaint.problemType
             }));
             
@@ -63,7 +65,6 @@ router.get('/complaints', (req, res) => {
         res.status(500).json({ error: 'Server error during complaints fetch: ' + error.message });
     }
 });
-
 // Get dashboard statistics
 router.get('/stats', (req, res) => {
     try {
