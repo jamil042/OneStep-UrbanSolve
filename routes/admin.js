@@ -149,7 +149,7 @@ router.put('/complaints/:id/assign', (req, res) => {
     console.log('=== ADMIN COMPLAINT ASSIGNMENT ===');
     console.log(`Assigning complaint #${complaintId} to staff: ${assignedStaff} in department: ${department}`);
     
-    pool.getConnection((err, connection) => {
+    pool.query((err, connection) => {
         if (err) {
             console.error('Error getting database connection:', err);
             return res.status(500).json({ error: 'Database connection error: ' + err.message });
@@ -197,15 +197,25 @@ router.put('/complaints/:id/assign', (req, res) => {
                         VALUES (?, ?, ?, NOW(), ?, 'In Progress')
                     `;
                     // 2. Added the `department` variable to the parameters
-                    connection.query(insertAssignmentQuery, [complaintId, staffId, department, notes || ''], (err) => {
-                        if (err) {
-                            return connection.rollback(() => {
-                                connection.release();
-                                console.error('Error inserting assignment:', err);
-                                res.status(500).json({ error: 'Error inserting assignment: ' + err.message });
-                            });
-                        }
-                        
+                   connection.query(insertAssignmentQuery, [complaintId, staffId, department, notes || ''], (err) => {
+    if (err) {
+        return connection.rollback(() => {
+            connection.release();
+            
+            // Check if this is our trigger error
+            if (err.sqlState === '45000' && err.message.includes('workload capacity')) {
+                console.error('Workload trigger prevented assignment:', err.message);
+                res.status(400).json({ 
+                    error: 'Cannot assign complaint: ' + err.message + '. Please choose a different staff member or resolve existing assignments first.',
+                    triggerError: true,
+                    workloadExceeded: true
+                });
+            } else {
+                console.error('Error inserting assignment:', err);
+                res.status(500).json({ error: 'Error inserting assignment: ' + err.message });
+            }
+        });
+    }
                         const statusHistoryQuery = `
                             INSERT INTO Complaint_Status_History 
                             (complaint_id, staff_id, status, updated_by)
@@ -346,6 +356,42 @@ router.get('/reports/dashboard', async (req, res) => {
         console.error('Database error during reports fetch:', err);
         res.status(500).json({ error: 'Error fetching reports data: ' + err.message });
     }
+});
+
+
+// Get staff workload details (to verify trigger is working)
+router.get('/staff/:staffId/workload', (req, res) => {
+    console.log('=== STAFF WORKLOAD CHECK ===');
+    const staffId = req.params.staffId;
+    
+    const query = `
+        SELECT 
+            COUNT(*) as active_assignments,
+            GROUP_CONCAT(c.complaint_id) as complaint_ids,
+            GROUP_CONCAT(c.title SEPARATOR '; ') as complaint_titles
+        FROM Staff_Assignments sa
+        JOIN Complaints c ON sa.complaint_id = c.complaint_id
+        WHERE sa.staff_id = ? AND sa.status_update != 'Resolved'
+    `;
+    
+    pool.query(query, [staffId], (err, results) => {
+        if (err) {
+            console.error('Error checking staff workload:', err);
+            return res.status(500).json({ error: 'Failed to check workload' });
+        }
+        
+        const workload = results[0] || { active_assignments: 0 };
+        console.log(`Staff ${staffId} has ${workload.active_assignments} active assignments`);
+        
+        res.json({
+            staffId: staffId,
+            activeAssignments: workload.active_assignments,
+            isAtCapacity: workload.active_assignments >= 10,
+            nearCapacity: workload.active_assignments >= 8,
+            complaintIds: workload.complaint_ids ? workload.complaint_ids.split(',') : [],
+            complaintTitles: workload.complaint_titles || 'No active assignments'
+        });
+    });
 });
 
 module.exports = router;

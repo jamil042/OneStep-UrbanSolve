@@ -708,15 +708,29 @@ async function openAssignmentForm(complaintId) {
     window.availableStaff = staffMembers;
     
     // Set up staff dropdown
-    if (assignStaff) {
-      assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
-      staffMembers.forEach(staff => {
-          const option = document.createElement('option');
-          option.value = staff.name;
-          option.textContent = `${staff.name} (${staff.active_assignments || 0} active cases)`;
-          assignStaff.appendChild(option);
-      });
-    }
+  if (assignStaff) {
+  assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
+  staffMembers.forEach(staff => {
+      const option = document.createElement('option');
+      option.value = staff.name;
+      
+      // Enhanced display with workload warning
+      const activeCases = staff.active_assignments || 0;
+      const workloadWarning = activeCases >= 8 ? ' ⚠️ NEAR LIMIT' : activeCases >= 10 ? ' ❌ FULL' : '';
+      
+      option.textContent = `${staff.name} (${activeCases}/10 active)${workloadWarning}`;
+      
+      // Disable if at capacity
+      if (activeCases >= 10) {
+          option.disabled = true;
+          option.style.color = '#ef4444';
+      } else if (activeCases >= 8) {
+          option.style.color = '#f59e0b';
+      }
+      
+      assignStaff.appendChild(option);
+  });
+}
     
     // Pre-fill form if already assigned
     if (complaint.department && assignDepartment) assignDepartment.value = complaint.department;
@@ -865,10 +879,31 @@ async function handleAssignmentSubmit(e) {
       })
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to assign complaint');
+   if (!response.ok) {
+  const errorData = await response.json();
+  
+  // Special handling for workload trigger error
+  if (errorData.workloadExceeded) {
+    // Show detailed workload error
+    alert('⚠️ WORKLOAD LIMIT EXCEEDED\n\n' + errorData.error + '\n\nThis staff member already has 10+ active assignments. Please:\n• Choose a different staff member\n• Or wait for them to resolve some cases');
+    
+    // Highlight the staff dropdown to show the issue
+    if (assignStaff) {
+      assignStaff.style.borderColor = '#ef4444';
+      assignStaff.style.backgroundColor = '#fef2f2';
+      
+      // Reset highlighting after 3 seconds
+      setTimeout(() => {
+        assignStaff.style.borderColor = '';
+        assignStaff.style.backgroundColor = '';
+      }, 3000);
     }
+    
+    return; // Don't close the form, let user try again
+  }
+  
+  throw new Error(errorData.error || 'Failed to assign complaint');
+}
     
     const result = await response.json();
     
