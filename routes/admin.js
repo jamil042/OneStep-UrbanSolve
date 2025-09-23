@@ -139,44 +139,22 @@ router.get('/staff', (req, res) => {
         res.status(500).json({ error: 'Server error during staff fetch: ' + error.message });
     }
 });
-// Get complaints by department for chart
-router.get('/departments', (req, res) => {
-    try {
-        console.log('=== ADMIN DEPARTMENTS FETCH ===');
-        
-        // Fixed departments list
-        const departments = [
-            { id: 1, name: 'WATER', description: 'Water related issues' },
-            { id: 2, name: 'ROADS', description: 'Road maintenance and infrastructure' },
-            { id: 3, name: 'WASTE', description: 'Waste management and sanitation' },
-            { id: 4, name: 'ELECTRICITY', description: 'Electrical and power related issues' },
-            { id: 5, name: 'GENERAL', description: 'General municipal issues' }
-        ];
-        
-        console.log('Returning fixed departments list');
-        res.json(departments);
-        
-    } catch (error) {
-        console.error('Admin departments fetch error:', error);
-        res.status(500).json({ error: 'Server error during departments fetch: ' + error.message });
-    }
-});
+
 // Update complaint status (for assignment functionality)
 router.put('/complaints/:id/assign', (req, res) => {
+    // The department is now correctly received from the request body
     const { department, assignedStaff, priority, notes } = req.body;
     const complaintId = req.params.id;
 
     console.log('=== ADMIN COMPLAINT ASSIGNMENT ===');
-    console.log(`Assigning complaint #${complaintId} to staff: ${assignedStaff} with priority: ${priority}`);
+    console.log(`Assigning complaint #${complaintId} to staff: ${assignedStaff} in department: ${department}`);
     
-    // Get a connection from the pool
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting database connection:', err);
             return res.status(500).json({ error: 'Database connection error: ' + err.message });
         }
 
-        // Begin transaction
         connection.beginTransaction((err) => {
             if (err) {
                 connection.release();
@@ -184,27 +162,19 @@ router.put('/complaints/:id/assign', (req, res) => {
                 return res.status(500).json({ error: 'Transaction error: ' + err.message });
             }
 
-            // 1. Get staff ID from staff name
             const getStaffIdQuery = 'SELECT user_id FROM Users WHERE name = ? AND role = "staff"';
             connection.query(getStaffIdQuery, [assignedStaff], (err, staffResults) => {
-                if (err) {
+                if (err || staffResults.length === 0) {
                     return connection.rollback(() => {
                         connection.release();
-                        console.error('Error finding staff member:', err);
-                        res.status(500).json({ error: 'Error finding staff member: ' + err.message });
-                    });
-                }
-                
-                if (staffResults.length === 0) {
-                    return connection.rollback(() => {
-                        connection.release();
-                        res.status(404).json({ error: 'Staff member not found' });
+                        const errorMessage = err ? 'Error finding staff member: ' + err.message : 'Staff member not found';
+                        console.error(errorMessage);
+                        res.status(err ? 500 : 404).json({ error: errorMessage });
                     });
                 }
                 
                 const staffId = staffResults[0].user_id;
 
-                // 2. Update complaint status and priority
                 const updateComplaintQuery = `
                     UPDATE Complaints 
                     SET status = 'In Progress', priority = ?, updated_at = NOW()
@@ -219,13 +189,15 @@ router.put('/complaints/:id/assign', (req, res) => {
                         });
                     }
 
-                    // 3. Insert into staff_assignments table
+                    // --- FIX IS HERE ---
+                    // 1. Added `department` to the query
                     const insertAssignmentQuery = `
                         INSERT INTO staff_assignments 
-                        (complaint_id, staff_id, assigned_at, progress_notes, status_update) 
-                        VALUES (?, ?, NOW(), ?, 'In Progress')
+                        (complaint_id, staff_id, department, assigned_at, progress_notes, status_update) 
+                        VALUES (?, ?, ?, NOW(), ?, 'In Progress')
                     `;
-                    connection.query(insertAssignmentQuery, [complaintId, staffId, notes || ''], (err) => {
+                    // 2. Added the `department` variable to the parameters
+                    connection.query(insertAssignmentQuery, [complaintId, staffId, department, notes || ''], (err) => {
                         if (err) {
                             return connection.rollback(() => {
                                 connection.release();
@@ -234,7 +206,6 @@ router.put('/complaints/:id/assign', (req, res) => {
                             });
                         }
                         
-                        // 4. Add to status history
                         const statusHistoryQuery = `
                             INSERT INTO Complaint_Status_History 
                             (complaint_id, staff_id, status, updated_by)
@@ -249,7 +220,6 @@ router.put('/complaints/:id/assign', (req, res) => {
                                 });
                             }
 
-                            // Commit transaction
                             connection.commit((err) => {
                                 if (err) {
                                     return connection.rollback(() => {
@@ -270,4 +240,45 @@ router.put('/complaints/:id/assign', (req, res) => {
         });
     });
 });
+
+// Add this new route to the end of your admin.js file, before `module.exports = router;`
+router.get('/departments', (req, res) => {
+    console.log('=== ADMIN DEPARTMENTS FETCH ===');
+    const query = 'SELECT dept_id, name FROM Departments ORDER BY name';
+    pool.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching departments:', err);
+            return res.status(500).json({ error: 'Failed to fetch departments' });
+        }
+        res.json(results);
+    });
+});
+
+router.post('/departments', (req, res) => {
+    console.log('=== ADMIN ADD DEPARTMENT ===');
+    const { name, description } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ error: 'Department name is required' });
+    }
+
+    const query = 'INSERT INTO Departments (name, description) VALUES (?, ?)';
+    
+    pool.query(query, [name, description || null], (err, result) => {
+        if (err) {
+            console.error('Error adding new department:', err);
+            return res.status(500).json({ error: 'Failed to add new department' });
+        }
+        console.log('Department added successfully with ID:', result.insertId);
+        // Send back the new department's data
+        res.status(201).json({ 
+            success: true, 
+            message: 'Department added successfully', 
+            department: { dept_id: result.insertId, name, description } 
+        });
+    });
+});
+
+
+
 module.exports = router;

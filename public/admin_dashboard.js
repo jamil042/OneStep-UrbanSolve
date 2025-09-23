@@ -1,4 +1,4 @@
-// DOM Elements
+// DOM Elements - FIXED: Updated to match HTML IDs
 const addDepartmentBtn = document.getElementById('addDepartmentBtn');
 const addProblemTypeBtn = document.getElementById('addProblemTypeBtn');
 const addStaffBtn = document.getElementById('addStaffBtn');
@@ -8,10 +8,13 @@ const closeAssignmentFormBtn = document.getElementById('closeAssignmentFormBtn')
 const cancelAssignmentBtn = document.getElementById('cancelAssignmentBtn');
 const assignmentForm = document.getElementById('assignmentForm');
 const selectedComplaintInfo = document.getElementById('selectedComplaintInfo');
-const assignDepartment = document.getElementById('assignDepartment');
+
+// FIXED: Changed from 'assignDepartment' to 'staffDepartment' to match HTML
+const assignDepartment = document.getElementById('staffDepartment');
 const assignStaff = document.getElementById('assignStaff');
 const assignPriority = document.getElementById('assignPriority');
 const assignNotes = document.getElementById('assignNotes');
+
 const complaintsTableBody = document.getElementById('complaintsTableBody');
 const emptyState = document.getElementById('emptyState');
 const searchInput = document.getElementById('searchInput');
@@ -358,6 +361,38 @@ function updateNotificationBadge() {
   }
 }
 
+async function fetchAndPopulateDepartments() {
+  console.log('Fetching departments from DB...');
+  try {
+    const response = await fetch('/api/admin/departments');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const departments = await response.json();
+    const staffDepartmentSelect = document.getElementById('staffDepartment');
+
+    // Clear existing options, keeping the first "Select department" option
+    while (staffDepartmentSelect.options.length > 1) {
+      staffDepartmentSelect.remove(1);
+    }
+
+    // Populate with departments from the database
+    departments.forEach(dept => {
+      const option = document.createElement('option');
+      option.value = dept.name;
+      option.textContent = dept.name;
+      staffDepartmentSelect.appendChild(option);
+    });
+
+    console.log('Departments populated successfully.');
+
+  } catch (error) {
+    console.error('Failed to fetch departments:', error);
+  }
+}
+
+
+
 // Render complaints table
 function renderComplaintsTable() {
   console.log('Rendering admin complaints table, total complaints:', allComplaints.length);
@@ -500,37 +535,35 @@ async function openAssignmentForm(complaintId) {
     
     selectedComplaintId = complaint.id || complaint.complaint_id;
     
-    // Update selected complaint info
     if (selectedComplaintInfo) {
       selectedComplaintInfo.innerHTML = `
         <h4>Complaint #${selectedComplaintId}</h4>
         <p><strong>${complaint.title}</strong></p>
-        <p>Reported by: ${complaint.citizenName || complaint.citizen_name || 'Unknown'}</p>
+        <p>Reported by: ${complaint.citizenName || 'Unknown'}</p>
         <p>Location: ${complaint.location || 'Unknown location'}</p>
         <p>Current Status: <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
       `;
     }
     
-    // Use fixed departments list
-    const departments = [
-      { id: 1, name: 'WATER' },
-      { id: 2, name: 'ROADS' },
-      { id: 3, name: 'WASTE' },
-      { id: 4, name: 'ELECTRICITY' },
-      { id: 5, name: 'GENERAL' }
-    ];
+    // --- FIX IS HERE ---
+    // Fetch departments and staff from the server
+    const [deptResponse, staffResponse] = await Promise.all([
+        fetch('/api/admin/departments'),
+        fetch('/api/admin/staff')
+    ]);
 
-    // Load staff members
-    const staffResponse = await fetch('/api/admin/staff');
+    if (!deptResponse.ok) throw new Error('Failed to fetch departments');
     if (!staffResponse.ok) throw new Error('Failed to fetch staff');
+
+    const departments = await deptResponse.json();
     const staffMembers = await staffResponse.json();
     
-    // Clear and populate department dropdown
+    // Clear and populate department dropdown from the database
     if (assignDepartment) {
       assignDepartment.innerHTML = '<option value="">Select Department</option>';
       departments.forEach(dept => {
         const option = document.createElement('option');
-        option.value = dept.name;
+        option.value = dept.name; // Use department name as value
         option.textContent = dept.name;
         assignDepartment.appendChild(option);
       });
@@ -539,51 +572,39 @@ async function openAssignmentForm(complaintId) {
     // Store staff members globally for the dropdown update function
     window.availableStaff = staffMembers;
     
-    // Set up staff dropdown with initial list
+    // Set up staff dropdown
     if (assignStaff) {
       assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
       staffMembers.forEach(staff => {
-        if (staff.status === 'available') {
           const option = document.createElement('option');
           option.value = staff.name;
           option.textContent = `${staff.name} (${staff.active_assignments || 0} active cases)`;
           assignStaff.appendChild(option);
-        }
       });
     }
     
     // Pre-fill form if already assigned
-    if (complaint.department && assignDepartment) {
-      assignDepartment.value = complaint.department;
-    }
-    
-    if (complaint.assignedStaff && assignStaff) {
-      assignStaff.value = complaint.assignedStaff;
-    }
+    if (complaint.department && assignDepartment) assignDepartment.value = complaint.department;
+    if (complaint.assignedStaff && assignStaff) assignStaff.value = complaint.assignedStaff;
     
     // Set up priority options
     if (assignPriority) {
-      assignPriority.innerHTML = `
-        <option value="">Select Priority</option>
-        <option value="High">High</option>
-        <option value="Medium">Medium</option>
-        <option value="Low">Low</option>
-      `;
-      
-      if (complaint.priority) {
-        assignPriority.value = complaint.priority;
-      }
+        assignPriority.innerHTML = `
+            <option value="">Select Priority</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+        `;
+        if (complaint.priority) assignPriority.value = complaint.priority;
     }
     
     // Show form
-    if (assignmentFormContainer) {
-      assignmentFormContainer.classList.add('show');
-    }
+    if (assignmentFormContainer) assignmentFormContainer.classList.add('show');
     if (assignDepartment) assignDepartment.focus();
     
   } catch (error) {
     console.error('Error opening assignment form:', error);
-    alert('Error loading departments and staff. Please try again.');
+    alert('Error loading assignment data. Please try again.');
   }
 }
 
@@ -607,28 +628,31 @@ async function updateStaffDropdown() {
     // Clear and set default option
     assignStaff.innerHTML = '<option value="">Select staff member</option>';
     
+    // If no department is selected, do nothing further
     if (!selectedDepartment) return;
     
-    // Filter available staff by matching department from the staffMembers array
-    const departmentStaff = window.availableStaff.filter(staff => 
-      staff.department === selectedDepartment
-    );
+    // --- FIX IS HERE ---
+    // The original code tried to filter staff, but the API doesn't provide
+    // department info for each staff member. This new code simply shows all staff.
+    // In the future, you can update the GET /api/admin/staff endpoint and
+    // re-add the filtering logic here.
     
-    // Add all staff to dropdown
-    window.availableStaff.forEach(staff => {
-      const option = document.createElement('option');
-      option.value = staff.name;
-      option.textContent = staff.name;
-      assignStaff.appendChild(option);
-    });
-    
-    // Show message if no staff available
-    if (window.availableStaff.length === 0) {
-      const option = document.createElement('option');
-      option.disabled = true;
-      option.textContent = 'No staff members available';
-      assignStaff.appendChild(option);
+    if (window.availableStaff && window.availableStaff.length > 0) {
+        window.availableStaff.forEach(staff => {
+            const option = document.createElement('option');
+            option.value = staff.name;
+            // Display active cases to help the admin choose
+            const activeCases = staff.active_assignments || 0;
+            option.textContent = `${staff.name} (${activeCases} active cases)`;
+            assignStaff.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'No staff members found';
+        assignStaff.appendChild(option);
     }
+    
   } catch (error) {
     console.error('Error updating staff dropdown:', error);
     const option = document.createElement('option');
@@ -637,7 +661,6 @@ async function updateStaffDropdown() {
     assignStaff.appendChild(option);
   }
 }
-
 // Clear form errors
 function clearAssignmentFormErrors() {
   document.querySelectorAll('.error-message').forEach(el => {
@@ -812,42 +835,53 @@ async function loadDashboardStats() {
 // Update your initAdminDashboard function to use the new stats function
 async function initAdminDashboard() {
   console.log('=== INITIALIZING ADMIN DASHBOARD ===');
-  
+
   await new Promise(resolve => setTimeout(resolve, 100));
-  
+
   currentUser = checkAdminLogin();
   if (!currentUser) {
     console.error('Failed to get current user, stopping initialization');
     return;
   }
-  
+
   console.log('✅ Current admin user set:', currentUser);
-  
+
   // Set username
   const username = currentUser.name || currentUser.username || currentUser.email || 'Admin User';
   const userElement = document.getElementById('username');
   const welcomeElement = document.getElementById('welcomeName');
-  
-  if (userElement) userElement.textContent = username;
+
+  if (userElement) {
+    userElement.textContent = username;
+    console.log('Set admin username element to:', username);
+  }
   if (welcomeElement) {
     const firstName = username.split(' ')[0];
     welcomeElement.textContent = firstName;
+    console.log('Set admin welcome element to:', firstName);
   }
-  
+
+  // Make currentUser globally accessible for debugging
+  window.currentUser = currentUser;
+  window.allComplaints = allComplaints;
+
+  console.log('🔍 Debug info available in window.currentUser and window.allComplaints');
+
   // Load all data
   console.log('Loading admin dashboard data...');
   await loadAllComplaints();
-  await loadDashboardStats();
-  await loadStaffMembers(); // Changed to async
+  loadStaffMembers();
   loadSystemLogs();
-  
+  await fetchAndPopulateDepartments(); // This is the new line you should add
+
   // Update dashboard
+  updateDashboardStats();
   renderComplaintsTable();
   renderStaffList();
   renderSystemLogs();
   initializeCharts();
   updateNotificationBadge();
-  
+
   console.log('✅ Admin dashboard initialization complete');
 }
 
@@ -1051,7 +1085,7 @@ function handleAddStaff() {
 }
 
 // Save department
-function saveDepartment() {
+async function saveDepartment() {
   const departmentName = document.getElementById('departmentName').value.trim();
   const departmentDescription = document.getElementById('departmentDescription').value.trim();
   
@@ -1059,26 +1093,50 @@ function saveDepartment() {
     alert('Department name is required');
     return;
   }
-  
-  // Add to system logs
-  const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
-  systemLogs.unshift({
-    id: Date.now(),
-    timestamp: new Date(),
-    action: `${adminName} added new department: ${departmentName}`,
-    type: 'success'
-  });
-  
-  // Update UI
-  renderSystemLogs();
-  
-  // Close modal
-  if (departmentModal) departmentModal.classList.remove('show');
-  if (departmentForm) departmentForm.reset();
-  
-  alert(`Department "${departmentName}" has been added successfully!`);
-}
 
+  try {
+    const response = await fetch('/api/admin/departments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: departmentName, description: departmentDescription }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save department');
+    }
+
+    const result = await response.json();
+    console.log('Server response:', result);
+
+    // Add to system logs
+    const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
+    systemLogs.unshift({
+      id: Date.now(),
+      timestamp: new Date(),
+      action: `${adminName} added new department: ${departmentName}`,
+      type: 'success'
+    });
+    
+    // Update UI
+    renderSystemLogs();
+    
+    // Close modal and clear the form
+    if (departmentModal) departmentModal.classList.remove('show');
+    if (departmentForm) departmentForm.reset();
+    
+    alert(`Department "${departmentName}" has been added successfully!`);
+    
+    // IMPORTANT: Refresh the department list in the "Add Staff" form
+    await fetchAndPopulateDepartments();
+
+  } catch (error) {
+      console.error('Error saving department:', error);
+      alert('Error: ' + error.message);
+  }
+}
 // Save staff
 function saveStaff() {
   const staffName = document.getElementById('staffName').value.trim();
