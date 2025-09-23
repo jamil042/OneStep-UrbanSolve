@@ -180,119 +180,37 @@ async function initStaffDashboard() {
   console.log('✅ Staff dashboard initialization complete');
 }
 
-// Generate mock assigned complaints
-function generateMockComplaints() {
-  const mockComplaints = [
-    {
-      id: 1001,
-      title: 'Water pipe burst on Main Street',
-      description: 'Large water pipe has burst causing flooding on Main Street near the shopping center.',
-      assignedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      status: 'Pending',
-      priority: 'High',
-      location: 'Main Street, Downtown',
-      zone: 'Central',
-      ward: 'Ward 1',
-      areaName: 'City Center',
-      problemType: 'Water Leak',
-      citizenName: 'Sarah Johnson',
-      reportedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 1002,
-      title: 'Pothole causing vehicle damage',
-      description: 'Deep pothole on Oak Avenue is causing damage to vehicles. Multiple complaints received.',
-      assignedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      status: 'In Progress',
-      priority: 'Medium',
-      location: 'Oak Avenue, Block 200',
-      zone: 'North',
-      ward: 'Ward 2',
-      areaName: 'Residential Area A',
-      problemType: 'Pothole',
-      citizenName: 'Mike Chen',
-      reportedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 1003,
-      title: 'Street light not working',
-      description: 'Street light at Park Road intersection has been out for several days.',
-      assignedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-      status: 'Pending',
-      priority: 'Low',
-      location: 'Park Road Intersection',
-      zone: 'South',
-      ward: 'Ward 1',
-      areaName: 'Market Area',
-      problemType: 'Street Light',
-      citizenName: 'Lisa Wang',
-      reportedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 1004,
-      title: 'Water quality issue reported',
-      description: 'Citizens reporting unusual taste and color in water supply in residential area.',
-      assignedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      status: 'Resolved',
-      priority: 'High',
-      location: 'Green Park Colony',
-      zone: 'West',
-      ward: 'Ward 3',
-      areaName: 'Green Park',
-      problemType: 'Water Quality',
-      citizenName: 'David Park',
-      reportedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 1005,
-      title: 'Traffic signal malfunction',
-      description: 'Traffic signal at busy intersection is not working properly, causing traffic issues.',
-      assignedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
-      status: 'In Progress',
-      priority: 'High',
-      location: '5th Street & Market',
-      zone: 'Central',
-      ward: 'Ward 2',
-      areaName: 'Financial District',
-      problemType: 'Traffic Signal',
-      citizenName: 'Emily Rodriguez',
-      reportedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-    }
-  ];
-  
-  return mockComplaints;
-}
-
 // IMPROVED: Load assigned complaints with better error handling
 async function loadAssignedComplaints() {
   if (!currentUser || !currentUser.id) {
     console.error('Cannot load assigned complaints: currentUser or currentUser.id is missing');
-    console.log('currentUser:', currentUser);
     return;
   }
   
   try {
-    console.log('Loading assigned complaints for staff ID:', currentUser.id);
+    const staffId = currentUser.id;
+    console.log(`Loading assigned complaints for staff ID: ${staffId}`);
     
-    // In real app, this would be an API call to get staff's assigned complaints
-    // const url = `/api/staff/${currentUser.id}/complaints`;
-    // console.log('Fetching from URL:', url);
-    // const response = await fetch(url);
+    // 1. UNCOMMENT THIS: This is the real API call
+    const response = await fetch(`/api/complaints/staff/${staffId}`);
     
-    // For demo, use mock data but log the user info
-    console.log('Using mock data for staff complaints (would be API call in production)');
-    console.log('Staff user info:', {
-      id: currentUser.id,
-      name: currentUser.name || currentUser.username,
-      email: currentUser.email
-    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to fetch complaints: ${response.status}`);
+    }
     
-    assignedComplaints = generateMockComplaints();
+    // 2. This line now gets REAL data from the server
+    assignedComplaints = await response.json();
+    
+    // 3. REMOVE THE MOCK DATA CALL: The line below is no longer needed
+    // assignedComplaints = generateMockComplaints();
     
     console.log('Loaded', assignedComplaints.length, 'assigned complaints for staff:', currentUser.name || currentUser.email);
+
   } catch (error) {
     console.error('Error loading assigned complaints:', error);
-    assignedComplaints = [];
+    assignedComplaints = []; // Clear complaints on error to avoid showing stale data
+    alert('Failed to load your assigned complaints. Please check the console and try refreshing the page.');
   }
 }
 
@@ -531,6 +449,8 @@ function validateUpdateForm() {
 }
 
 // Handle update form submission
+// staff_dashboard.js
+
 async function handleUpdateSubmit(e) {
   e.preventDefault();
   
@@ -542,36 +462,38 @@ async function handleUpdateSubmit(e) {
   if (updateSpinner) updateSpinner.style.display = 'inline-block';
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Find and update the complaint
-    const complaintIndex = assignedComplaints.findIndex(c => c.id === selectedComplaintId);
-    if (complaintIndex !== -1) {
-      assignedComplaints[complaintIndex].status = updateStatus.value;
-      assignedComplaints[complaintIndex].lastUpdated = new Date().toISOString();
-      
-      // Add to recent updates with staff name
-      const staffName = currentUser ? (currentUser.name || currentUser.username || 'Staff') : 'Staff';
-      recentUpdates.unshift({
-        id: Date.now(),
-        date: formatDateTime(new Date()),
-        message: `${staffName} updated complaint #${selectedComplaintId} to "${updateStatus.value}": ${updateNotes.value.substring(0, 50)}...`
-      });
+    // FIXED: Removed '/api' prefix to match backend route
+    const response = await fetch(`/api/complaints/${selectedComplaintId}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            status: updateStatus.value,
+            notes: updateNotes.value,
+            staffId: currentUser.id
+        }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update complaint on the server.');
     }
-    
-    // Update UI
-    updateDashboardStats();
-    renderComplaintsTable();
-    renderRecentUpdates();
-    
-    // Close form and show success
-    closeUpdateForm();
-    alert(`Complaint #${selectedComplaintId} has been updated successfully!`);
+
+    const result = await response.json();
+
+    if (result.success) {
+        await refreshComplaints();
+        alert(`Complaint #${selectedComplaintId} has been updated successfully!`);
+        closeUpdateForm();
+        
+    } else {
+        throw new Error(result.message || 'An unknown error occurred.');
+    }
     
   } catch (error) {
     console.error('Error updating complaint:', error);
-    alert('Error updating complaint. Please try again.');
+    alert('Error updating complaint: ' + error.message);
   } finally {
     // Reset button state
     if (updateBtn) updateBtn.disabled = false;
@@ -579,7 +501,6 @@ async function handleUpdateSubmit(e) {
     if (updateSpinner) updateSpinner.style.display = 'none';
   }
 }
-
 // View complaint details in modal
 function viewComplaintDetails(id) {
   const complaint = assignedComplaints.find(c => c.id === id);

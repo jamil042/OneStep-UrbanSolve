@@ -260,4 +260,106 @@ router.get('/complaints/:userId/stats', (req, res) => {
     }
 });
 
+router.get('/complaints/staff/:staffId', (req, res) => {
+    const { staffId } = req.params;
+    console.log(`=== FETCHING COMPLAINTS FOR STAFF ID: ${staffId} ===`);
+
+    try {
+        const query = `
+            SELECT 
+                c.complaint_id as id,
+                c.title,
+                c.description,
+                c.status,
+                c.priority,
+                sa.assigned_at as assignedAt,
+                c.created_at as reportedAt,
+                u_citizen.name as citizenName,
+                p.problem_name as problemType,
+                CONCAT(l.area_name, ', ', l.ward) as location
+            FROM Staff_Assignments sa
+            JOIN Complaints c ON sa.complaint_id = c.complaint_id
+            JOIN Users u_citizen ON c.user_id = u_citizen.user_id
+            JOIN Locations l ON c.location_id = l.location_id
+            JOIN Problem p ON c.problem_id = p.problem_id
+            WHERE sa.staff_id = ?
+            ORDER BY sa.assigned_at DESC;
+        `;
+
+        pool.query(query, [staffId], (err, results) => {
+            if (err) {
+                console.error('Database error fetching staff complaints:', err);
+                return res.status(500).json({ error: 'Error fetching assigned complaints: ' + err.message });
+            }
+
+            console.log('Found', results.length, 'complaints for staff ID:', staffId);
+            res.json(results);
+        });
+    } catch (error) {
+        console.error('Server error during staff complaints fetch:', error);
+        res.status(500).json({ error: 'Server error: ' + error.message });
+    }
+});
+
+// UPDATE a complaint's status
+// UPDATE a complaint's status - FIXED VERSION
+router.put('/complaints/:complaintId/status', (req, res) => {
+    const { complaintId } = req.params;
+    const { status, notes, staffId } = req.body;
+
+    console.log(`=== UPDATING COMPLAINT #${complaintId} TO STATUS: ${status} BY STAFF ID: ${staffId} ===`);
+
+    if (!status || !notes || !staffId) {
+        return res.status(400).json({ error: 'Missing required fields: status, notes, staffId' });
+    }
+
+    // First, update the main Complaints table
+    const updateComplaintQuery = 'UPDATE Complaints SET status = ?, updated_at = NOW() WHERE complaint_id = ?';
+    
+    pool.query(updateComplaintQuery, [status, complaintId], (err, results) => {
+        if (err) {
+            console.error('Error updating complaints table:', err);
+            return res.status(500).json({ error: 'Failed to update complaint status: ' + err.message });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Complaint not found' });
+        }
+
+        // Update the Staff_Assignments table with the new status and notes
+        const updateAssignmentQuery = `
+            UPDATE Staff_Assignments 
+            SET status_update = ?, progress_notes = CONCAT(IFNULL(progress_notes, ''), '\n[', NOW(), '] ', ?)
+            WHERE complaint_id = ? AND staff_id = ?
+        `;
+        
+        pool.query(updateAssignmentQuery, [status, notes, complaintId, staffId], (err, assignmentResult) => {
+            if (err) {
+                console.error('Error updating staff assignment:', err);
+                // Don't fail the whole operation if assignment update fails
+                console.log('Assignment update failed, but complaint status was updated');
+            }
+
+            // Add a record to the status history table
+            const historyQuery = 'INSERT INTO Complaint_Status_History (complaint_id, staff_id, status, updated_by, updated_at) VALUES (?, ?, ?, ?, NOW())';
+            
+            pool.query(historyQuery, [complaintId, staffId, status, staffId], (err, historyResult) => {
+                if (err) {
+                    console.error('Error inserting into status history:', err);
+                    // Don't fail the operation if history logging fails
+                    console.log('Status history failed, but complaint was updated');
+                }
+
+                console.log(`✅ Complaint #${complaintId} successfully updated to ${status}`);
+                res.json({ 
+                    success: true, 
+                    message: 'Complaint updated successfully',
+                    complaintId: complaintId,
+                    newStatus: status
+                });
+            });
+        });
+    });
+});
+
 module.exports = router;
