@@ -279,6 +279,73 @@ router.post('/departments', (req, res) => {
     });
 });
 
+// Get complaint summary view data
+router.get('/reports/complaint-summary', (req, res) => {
+    console.log('=== ADMIN COMPLAINT SUMMARY VIEW ===');
+    const query = 'SELECT * FROM complaint_summary_view ORDER BY complaint_count DESC';
+    
+    pool.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching complaint summary view:', err);
+            return res.status(500).json({ error: 'Failed to fetch complaint summary' });
+        }
+        
+        console.log('Complaint summary data:', results);
+        res.json(results);
+    });
+});
 
+// Get staff performance view data
+router.get('/reports/staff-performance', (req, res) => {
+    console.log('=== ADMIN STAFF PERFORMANCE VIEW ===');
+    const query = 'SELECT * FROM staff_workload_view ORDER BY total_assigned DESC';
+    
+    pool.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching staff performance view:', err);
+            return res.status(500).json({ error: 'Failed to fetch staff performance data' });
+        }
+        
+        console.log('Staff performance data:', results);
+        res.json(results);
+    });
+});
+
+// Get combined reports data
+
+router.get('/reports/dashboard', async (req, res) => {
+    console.log('=== ADMIN REPORTS FETCH ===');
+    try {
+        // Function to query the database using promises for async/await
+        const queryPromise = (sql) => {
+            return new Promise((resolve, reject) => {
+                pool.query(sql, (err, results) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    resolve(results);
+                });
+            });
+        };
+
+        // Run both view queries in parallel for better performance
+        const [complaintSummary, staffPerformance] = await Promise.all([
+            queryPromise('SELECT * FROM complaint_summary_view'),
+            queryPromise('SELECT * FROM staff_workload_view')
+        ]);
+
+        console.log('Successfully fetched data from database views.');
+
+        // Send both results back in a single JSON object
+        res.json({
+            complaintSummary,
+            staffPerformance
+        });
+
+    } catch (err) {
+        console.error('Database error during reports fetch:', err);
+        res.status(500).json({ error: 'Error fetching reports data: ' + err.message });
+    }
+});
 
 module.exports = router;

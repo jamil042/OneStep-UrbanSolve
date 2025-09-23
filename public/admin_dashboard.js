@@ -143,6 +143,8 @@ function showAdminLoginError(message) {
 }
 
 // Initialize admin dashboard
+// admin_dashboard.js
+
 async function initAdminDashboard() {
   console.log('=== INITIALIZING ADMIN DASHBOARD ===');
   
@@ -163,28 +165,27 @@ async function initAdminDashboard() {
   
   if (userElement) {
     userElement.textContent = username;
-    console.log('Set admin username element to:', username);
   }
   if (welcomeElement) {
     const firstName = username.split(' ')[0];
     welcomeElement.textContent = firstName;
-    console.log('Set admin welcome element to:', firstName);
   }
   
   // Make currentUser globally accessible for debugging
   window.currentUser = currentUser;
-  window.allComplaints = allComplaints;
   
-  console.log('🔍 Debug info available in window.currentUser and window.allComplaints');
-  
-  // Load all data
+  // Load all data from the server in the correct order
   console.log('Loading admin dashboard data...');
   await loadAllComplaints();
-  loadStaffMembers();
-  loadSystemLogs();
+  await loadStaffMembers();
+  await loadReportsData(); // This was missing from the active function
+  await fetchAndPopulateDepartments();
+  await loadDashboardStats(); // Use the function that calls the API
   
-  // Update dashboard
-  updateDashboardStats();
+  loadSystemLogs(); // This can run without await as it's local data
+  
+  // Now that all data is loaded, render everything
+  console.log('All data loaded, rendering UI...');
   renderComplaintsTable();
   renderStaffList();
   renderSystemLogs();
@@ -325,6 +326,140 @@ function loadSystemLogs() {
   ];
 }
 
+
+async function loadReportsData() {
+    try {
+        console.log('=== LOADING REPORTS DATA ===');
+        
+        const response = await fetch('/api/admin/reports/dashboard');
+        if (!response.ok) {
+            throw new Error('Failed to fetch reports data: ' + response.status);
+        }
+        
+        const data = await response.json();
+        console.log('Reports data loaded:', data);
+        
+        // Render both reports
+        renderComplaintSummaryReport(data.complaintSummary);
+        renderStaffPerformanceReport(data.staffPerformance);
+        
+    } catch (error) {
+        console.error('Error loading reports data:', error);
+        showReportsError('Failed to load reports data. Please try again.');
+    }
+}
+
+// Render complaint summary report table
+function renderComplaintSummaryReport(data) {
+    const tbody = document.getElementById('complaintSummaryBody');
+    if (!tbody || !data || data.length === 0) {
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="4" class="no-data">No complaint summary data available</td></tr>';
+        }
+        return;
+    }
+    
+    tbody.innerHTML = data.map(item => {
+        const avgDays = item.avg_resolution_days ? `${item.avg_resolution_days} days` : 'N/A';
+        const dateRange = item.earliest_complaint && item.latest_complaint 
+            ? `${formatDate(item.earliest_complaint)} - ${formatDate(item.latest_complaint)}`
+            : 'N/A';
+            
+        return `
+            <tr>
+                <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status}</span></td>
+                <td><strong>${item.complaint_count}</strong></td>
+                <td>${avgDays}</td>
+                <td class="date-range">${dateRange}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('Complaint summary report rendered with', data.length, 'rows');
+}
+
+// Render staff performance report table
+function renderStaffPerformanceReport(data) {
+    const tbody = document.getElementById('staffPerformanceBody');
+    if (!tbody || !data || data.length === 0) {
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data">No staff performance data available</td></tr>';
+        }
+        return;
+    }
+    
+    tbody.innerHTML = data.map(staff => {
+        const avgTime = staff.avg_resolution_time ? `${staff.avg_resolution_time} days` : 'N/A';
+        const efficiency = staff.total_assigned > 0 
+            ? Math.round((staff.resolved_cases / staff.total_assigned) * 100) 
+            : 0;
+            
+        return `
+            <tr>
+                <td>
+                    <div class="staff-info">
+                        <strong>${staff.staff_name}</strong>
+                        <small>${staff.staff_email}</small>
+                    </div>
+                </td>
+                <td><span class="department-tag">${staff.department || 'N/A'}</span></td>
+                <td><span class="active-cases">${staff.active_cases}</span></td>
+                <td><span class="resolved-cases">${staff.resolved_cases}</span></td>
+                <td><strong>${staff.total_assigned}</strong></td>
+                <td>
+                    <div class="performance-info">
+                        <span class="avg-time">${avgTime}</span>
+                        <span class="efficiency-rate">${efficiency}% efficiency</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('Staff performance report rendered with', data.length, 'rows');
+}
+
+// Format date for display
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+// Show error message for reports
+function showReportsError(message) {
+    const summaryBody = document.getElementById('complaintSummaryBody');
+    const performanceBody = document.getElementById('staffPerformanceBody');
+    
+    if (summaryBody) {
+        summaryBody.innerHTML = `<tr><td colspan="4" class="error">${message}</td></tr>`;
+    }
+    if (performanceBody) {
+        performanceBody.innerHTML = `<tr><td colspan="6" class="error">${message}</td></tr>`;
+    }
+}
+
+// Refresh reports data
+async function refreshReports() {
+    const refreshBtn = document.getElementById('refreshReportsBtn');
+    if (refreshBtn) {
+        const originalText = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshBtn.disabled = true;
+    }
+    
+    await loadReportsData();
+    
+    if (refreshBtn) {
+        refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Reports';
+        refreshBtn.disabled = false;
+    }
+}
+
+
 // Update dashboard statistics
 function updateDashboardStats() {
   const total = allComplaints.length;
@@ -410,7 +545,7 @@ function renderComplaintsTable() {
     const matchesSearch = 
       complaint.title.toLowerCase().includes(searchTerm) ||
       complaint.description.toLowerCase().includes(searchTerm) ||
-      complaint.citizen_name.toLowerCase().includes(searchTerm) ||
+      complaint.citizenName.toLowerCase().includes(searchTerm) ||
       complaint.location.toLowerCase().includes(searchTerm);
     
     const matchesStatus = statusFilterValue === 'all' || complaint.status === statusFilterValue;
@@ -832,58 +967,7 @@ async function loadDashboardStats() {
   }
 }
 
-// Update your initAdminDashboard function to use the new stats function
-async function initAdminDashboard() {
-  console.log('=== INITIALIZING ADMIN DASHBOARD ===');
 
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  currentUser = checkAdminLogin();
-  if (!currentUser) {
-    console.error('Failed to get current user, stopping initialization');
-    return;
-  }
-
-  console.log('✅ Current admin user set:', currentUser);
-
-  // Set username
-  const username = currentUser.name || currentUser.username || currentUser.email || 'Admin User';
-  const userElement = document.getElementById('username');
-  const welcomeElement = document.getElementById('welcomeName');
-
-  if (userElement) {
-    userElement.textContent = username;
-    console.log('Set admin username element to:', username);
-  }
-  if (welcomeElement) {
-    const firstName = username.split(' ')[0];
-    welcomeElement.textContent = firstName;
-    console.log('Set admin welcome element to:', firstName);
-  }
-
-  // Make currentUser globally accessible for debugging
-  window.currentUser = currentUser;
-  window.allComplaints = allComplaints;
-
-  console.log('🔍 Debug info available in window.currentUser and window.allComplaints');
-
-  // Load all data
-  console.log('Loading admin dashboard data...');
-  await loadAllComplaints();
-  loadStaffMembers();
-  loadSystemLogs();
-  await fetchAndPopulateDepartments(); // This is the new line you should add
-
-  // Update dashboard
-  updateDashboardStats();
-  renderComplaintsTable();
-  renderStaffList();
-  renderSystemLogs();
-  initializeCharts();
-  updateNotificationBadge();
-
-  console.log('✅ Admin dashboard initialization complete');
-}
 
 // View complaint details in modal
 function viewComplaintDetails(complaintId) {
@@ -914,7 +998,7 @@ function viewComplaintDetails(complaintId) {
       
       <div class="complaint-detail">
         <h4>Citizen Information</h4>
-        <p><strong>Name:</strong> ${complaint.citizenName || complaint.citizen_name || 'Unknown'}</p>
+        <p><strong>Name:</strong> ${complaint.citizenName || complaint.citizenName || 'Unknown'}</p>
         <p><strong>Email:</strong> ${complaint.citizenEmail || complaint.citizen_email || 'Not provided'}</p>
       </div>
       
@@ -1276,6 +1360,12 @@ if (staffModal) {
     }
   });
 }
+
+const refreshReportsBtn = document.getElementById('refreshReportsBtn');
+if (refreshReportsBtn) {
+    refreshReportsBtn.addEventListener('click', refreshReports);
+}
+
 
 // Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', initAdminDashboard);
