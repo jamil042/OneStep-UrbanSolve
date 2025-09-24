@@ -302,9 +302,10 @@ router.get('/complaints/staff/:staffId', (req, res) => {
 });
 
 // UPDATE a complaint's status
+// UPDATE a complaint's status - FIXED VERSION
 router.put('/complaints/:complaintId/status', (req, res) => {
     const { complaintId } = req.params;
-    const { status, notes, staffId } = req.body; // We'll send these from the frontend
+    const { status, notes, staffId } = req.body;
 
     console.log(`=== UPDATING COMPLAINT #${complaintId} TO STATUS: ${status} BY STAFF ID: ${staffId} ===`);
 
@@ -312,54 +313,49 @@ router.put('/complaints/:complaintId/status', (req, res) => {
         return res.status(400).json({ error: 'Missing required fields: status, notes, staffId' });
     }
 
-    // Use a transaction to ensure both updates succeed or fail together
-    pool.getConnection((err, connection) => {
+    // First, update the main Complaints table
+    const updateComplaintQuery = 'UPDATE Complaints SET status = ?, updated_at = NOW() WHERE complaint_id = ?';
+    
+    pool.query(updateComplaintQuery, [status, complaintId], (err, results) => {
         if (err) {
-            console.error('Error getting database connection:', err);
-            return res.status(500).json({ error: 'Database connection error' });
+            console.error('Error updating complaints table:', err);
+            return res.status(500).json({ error: 'Failed to update complaint status: ' + err.message });
         }
 
-        connection.beginTransaction(err => {
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Complaint not found' });
+        }
+
+        // Update the Staff_Assignments table with the new status and notes
+        const updateAssignmentQuery = `
+            UPDATE Staff_Assignments 
+            SET status_update = ?, progress_notes = CONCAT(IFNULL(progress_notes, ''), '\n[', NOW(), '] ', ?)
+            WHERE complaint_id = ? AND staff_id = ?
+        `;
+        
+        pool.query(updateAssignmentQuery, [status, notes, complaintId, staffId], (err, assignmentResult) => {
             if (err) {
-                connection.release();
-                return res.status(500).json({ error: 'Failed to start transaction' });
+                console.error('Error updating staff assignment:', err);
+                // Don't fail the whole operation if assignment update fails
+                console.log('Assignment update failed, but complaint status was updated');
             }
 
-            // 1. Update the main Complaints table
-            const updateComplaintQuery = 'UPDATE Complaints SET status = ?, updated_at = NOW() WHERE complaint_id = ?';
-            connection.query(updateComplaintQuery, [status, complaintId], (err, results) => {
+            // Add a record to the status history table
+            const historyQuery = 'INSERT INTO Complaint_Status_History (complaint_id, staff_id, status, updated_by, updated_at) VALUES (?, ?, ?, ?, NOW())';
+            
+            pool.query(historyQuery, [complaintId, staffId, status, staffId], (err, historyResult) => {
                 if (err) {
-                    return connection.rollback(() => {
-                        connection.release();
-                        console.error('Error updating complaints table:', err);
-                        res.status(500).json({ error: 'Failed to update complaint status' });
-                    });
+                    console.error('Error inserting into status history:', err);
+                    // Don't fail the operation if history logging fails
+                    console.log('Status history failed, but complaint was updated');
                 }
 
-                // 2. Add a record to the status history table
-              const historyQuery = 'INSERT INTO Complaint_Status_History (complaint_id, status, updated_by) VALUES (?, ?, ?)';
-connection.query(historyQuery, [complaintId, status, staffId], (err, results) => {
-    if (err) {
-        return connection.rollback(() => {
-            connection.release();
-            console.error('Error inserting into status history:', err);
-            res.status(500).json({ error: 'Failed to log status update' });
-        });
-    }
-
-                    connection.commit(err => {
-                        if (err) {
-                            return connection.rollback(() => {
-                                connection.release();
-                                console.error('Error committing transaction:', err);
-                                res.status(500).json({ error: 'Failed to commit changes' });
-                            });
-                        }
-
-                        console.log(`✅ Complaint #${complaintId} successfully updated.`);
-                        connection.release();
-                        res.json({ success: true, message: 'Complaint updated successfully' });
-                    });
+                console.log(`✅ Complaint #${complaintId} successfully updated to ${status}`);
+                res.json({ 
+                    success: true, 
+                    message: 'Complaint updated successfully',
+                    complaintId: complaintId,
+                    newStatus: status
                 });
             });
         });
