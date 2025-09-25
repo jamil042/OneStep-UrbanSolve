@@ -1,20 +1,18 @@
 // db.js
 const mysql = require('mysql2');
-
 const connection = mysql.createConnection({
-  host: 'db4free.net',       
-  user: 'tamim83',           
-  password: 'Tamim_123@',    
-  database: 'urbandb',
-  port: 3306                 
+  host: 'localhost',
+  user: 'root',
+  password: 'as2023jamil14102',
+  database: 'showcase',
+  waitForConnections: true,
+  connectionLimit: 10,
+    queueLimit: 0
 });
 
 connection.connect((err) => {
-  if (err) {
-    console.error('Database connection failed:', err);
-    return;
-  }
-  console.log('✅ Connected to db4free MySQL database');
+  if (err) throw err;
+  console.log('Connected to MySQL database');
 });
 
 module.exports = connection;
