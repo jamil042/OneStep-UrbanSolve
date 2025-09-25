@@ -1423,4 +1423,8 @@ window.checkAdminLogin = checkAdminLogin;
 window.viewComplaintDetails = viewComplaintDetails;
 window.openAssignmentForm = openAssignmentForm;
 
+<<<<<<< HEAD
 console.log('Admin Dashboard loaded successfully');
+=======
+console.log('Admin Dashboard loaded successfully');
+>>>>>>> 6f61748125151a968f5469790226a5d99bb5876d
