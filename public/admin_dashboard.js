@@ -178,23 +178,129 @@ async function initAdminDashboard() {
   console.log('Loading admin dashboard data...');
   await loadAllComplaints();
   await loadStaffMembers();
-  await loadReportsData(); // This was missing from the active function
+  await loadReportsData();
   await fetchAndPopulateDepartments();
-  await loadDashboardStats(); // Use the function that calls the API
+  await loadDashboardStats();
   
-  loadSystemLogs(); // This can run without await as it's local data
+  loadSystemLogs();
   
   // Now that all data is loaded, render everything
   console.log('All data loaded, rendering UI...');
   renderComplaintsTable();
   renderStaffList();
   renderSystemLogs();
-  initializeCharts();
+  
+  // IMPORTANT: Initialize charts AFTER data is loaded
+  setTimeout(() => {
+    initializeCharts();
+  }, 500);
+  
   updateNotificationBadge();
   
   console.log('✅ Admin dashboard initialization complete');
 }
 
+// Enhanced Trends Chart with Real Data
+function initializeTrendsChart() {
+  const ctx = document.getElementById('trendsChart');
+  if (!ctx) return;
+  
+  // If chart already exists, destroy it first
+  if (trendsChart) {
+    trendsChart.destroy();
+  }
+  
+  // Generate trend data from actual complaints
+  const last7Days = [];
+  const complaintsPerDay = [];
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    last7Days.push(dateStr);
+    
+    // Count complaints for this day
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    const complaintsOnDay = allComplaints.filter(complaint => {
+      const complaintDate = new Date(complaint.reportedAt);
+      return complaintDate >= dayStart && complaintDate <= dayEnd;
+    }).length;
+    
+    complaintsPerDay.push(complaintsOnDay);
+  }
+  
+  trendsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: last7Days,
+      datasets: [{
+        label: 'New Complaints',
+        data: complaintsPerDay,
+        borderColor: '#7c3aed',
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#7c3aed',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          display: true,
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            precision: 0
+          },
+          grid: {
+            borderDash: [5, 5]
+          }
+        }
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+  
+  console.log('Trends chart initialized with data:', complaintsPerDay);
+}
 
 // Load all complaints
 async function loadAllComplaints() {
@@ -680,7 +786,6 @@ async function openAssignmentForm(complaintId) {
       `;
     }
     
-    // --- FIX IS HERE ---
     // Fetch departments and staff from the server
     const [deptResponse, staffResponse] = await Promise.all([
         fetch('/api/admin/departments'),
@@ -698,7 +803,7 @@ async function openAssignmentForm(complaintId) {
       assignDepartment.innerHTML = '<option value="">Select Department</option>';
       departments.forEach(dept => {
         const option = document.createElement('option');
-        option.value = dept.name; // Use department name as value
+        option.value = dept.name;
         option.textContent = dept.name;
         assignDepartment.appendChild(option);
       });
@@ -707,30 +812,35 @@ async function openAssignmentForm(complaintId) {
     // Store staff members globally for the dropdown update function
     window.availableStaff = staffMembers;
     
-    // Set up staff dropdown
-  if (assignStaff) {
-  assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
-  staffMembers.forEach(staff => {
-      const option = document.createElement('option');
-      option.value = staff.name;
-      
-      // Enhanced display with workload warning
-      const activeCases = staff.active_assignments || 0;
-      const workloadWarning = activeCases >= 8 ? ' ⚠️ NEAR LIMIT' : activeCases >= 10 ? ' ❌ FULL' : '';
-      
-      option.textContent = `${staff.name} (${activeCases}/10 active)${workloadWarning}`;
-      
-      // Disable if at capacity
-      if (activeCases >= 10) {
-          option.disabled = true;
-          option.style.color = '#ef4444';
-      } else if (activeCases >= 8) {
-          option.style.color = '#f59e0b';
-      }
-      
-      assignStaff.appendChild(option);
-  });
-}
+    // Set up staff dropdown with CONSISTENT workload logic (matching your trigger limit of 3)
+    if (assignStaff) {
+      assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
+      staffMembers.forEach(staff => {
+          const option = document.createElement('option');
+          option.value = staff.name;
+          
+          // FIXED: Use 3 as limit to match your MySQL trigger
+          const activeCases = staff.active_assignments || 0;
+          const maxCapacity = 3; // Match your trigger limit
+          
+          let displayText = `${staff.name} (${activeCases}/${maxCapacity} active)`;
+          let warningText = '';
+          
+          if (activeCases >= maxCapacity) {
+              warningText = ' 🔴 AT LIMIT';
+              option.disabled = true;
+              option.style.color = '#ef4444';
+              option.style.fontWeight = 'bold';
+          } else if (activeCases >= maxCapacity - 1) {
+              warningText = ' ⚠️ NEAR LIMIT';
+              option.style.color = '#f59e0b';
+              option.style.fontWeight = '600';
+          }
+          
+          option.textContent = displayText + warningText;
+          assignStaff.appendChild(option);
+      });
+    }
     
     // Pre-fill form if already assigned
     if (complaint.department && assignDepartment) assignDepartment.value = complaint.department;
@@ -756,6 +866,7 @@ async function openAssignmentForm(complaintId) {
     alert('Error loading assignment data. Please try again.');
   }
 }
+
 
 // Close assignment form
 function closeAssignmentForm() {
@@ -879,83 +990,59 @@ async function handleAssignmentSubmit(e) {
       })
     });
     
-   if (!response.ok) {
-  const errorData = await response.json();
-  
-  // Special handling for workload trigger error
-  if (errorData.workloadExceeded) {
-    // Show detailed workload error
-    alert('⚠️ WORKLOAD LIMIT EXCEEDED\n\n' + errorData.error + '\n\nThis staff member already has 10+ active assignments. Please:\n• Choose a different staff member\n• Or wait for them to resolve some cases');
-    
-    // Highlight the staff dropdown to show the issue
-    if (assignStaff) {
-      assignStaff.style.borderColor = '#ef4444';
-      assignStaff.style.backgroundColor = '#fef2f2';
+    if (!response.ok) {
+      const errorData = await response.json();
       
-      // Reset highlighting after 3 seconds
-      setTimeout(() => {
-        assignStaff.style.borderColor = '';
-        assignStaff.style.backgroundColor = '';
-      }, 3000);
+      // Enhanced workload error handling
+      if (errorData.workloadExceeded) {
+        showWorkloadExceededModal(errorData);
+        return; // Don't close the form, let user try again
+      }
+      
+      throw new Error(errorData.error || 'Failed to assign complaint');
     }
-    
-    return; // Don't close the form, let user try again
-  }
-  
-  throw new Error(errorData.error || 'Failed to assign complaint');
-}
     
     const result = await response.json();
     
-    // ... inside handleAssignmentSubmit
-if (result.success) {
-    // Option 1: Trust the server response and update UI
-    // The server response `result` could contain the updated complaint object.
-    // If it does, you can update the local array and render without re-fetching everything.
-    // However, since the current code re-fetches, we will correct that logic.
-
-    // Option 2: Ensure re-fetch completes before re-render (safer approach)
-
-    // First, update the local data temporarily for a smooth UI transition.
-    // This part is already correct.
-    const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
-    if (complaintIndex !== -1) {
+    if (result.success) {
+      // Update local data
+      const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
+      if (complaintIndex !== -1) {
         allComplaints[complaintIndex].department = assignDepartment.value;
         allComplaints[complaintIndex].assignedStaff = assignStaff.value;
         allComplaints[complaintIndex].priority = assignPriority.value;
         allComplaints[complaintIndex].status = 'In Progress';
-        
-        // Add to system logs
-        const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
-        systemLogs.unshift({
-            id: Date.now(),
-            timestamp: new Date(),
-            action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
-            type: 'success'
-        });
-    }
+      }
 
-    // Await both promises to ensure data is fresh.
-    await loadAllComplaints(); // This will fetch the latest data from the server
-    await loadDashboardStats(); // This will update the stats from the server
-    
-    // Now that the data is guaranteed to be up-to-date, re-render the UI.
-    renderComplaintsTable();
-    renderSystemLogs();
-    updateNotificationBadge();
-    
-    // Close form and show success
-    alert(`Complaint #${selectedComplaintId} has been assigned successfully to ${assignStaff.value}!`);
-    closeAssignmentForm();
-}
-// ...
-    else {
+      // Add to system logs
+      const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
+      systemLogs.unshift({
+        id: Date.now(),
+        timestamp: new Date(),
+        action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
+        type: 'success'
+      });
+
+      // Refresh data and UI
+      await loadAllComplaints();
+      await loadDashboardStats();
+      renderComplaintsTable();
+      renderSystemLogs();
+      updateNotificationBadge();
+      
+      // IMPORTANT: Re-initialize the chart with new data
+      initializeDepartmentChart();
+      
+      // Show success message
+      showSuccessMessage(`✅ Assignment Successful!\n\nComplaint #${selectedComplaintId} has been assigned to ${assignStaff.value}`);
+      closeAssignmentForm();
+    } else {
       throw new Error(result.error || 'Failed to assign complaint');
     }
     
   } catch (error) {
     console.error('Error assigning complaint:', error);
-    alert('Error assigning complaint: ' + error.message);
+    showErrorMessage('Assignment Failed', error.message);
   } finally {
     // Reset button state
     const assignBtn = assignmentForm.querySelector('button[type="submit"]');
@@ -968,6 +1055,130 @@ if (result.success) {
   }
 }
 
+// Enhanced modal for workload exceeded
+function showWorkloadExceededModal(errorData) {
+  const modal = document.createElement('div');
+  modal.className = 'workload-modal-overlay';
+  modal.innerHTML = `
+    <div class="workload-modal">
+      <div class="workload-modal-header">
+        <h3>⚠️ Assignment Blocked</h3>
+        <button class="close-workload-modal">&times;</button>
+      </div>
+      <div class="workload-modal-body">
+        <div class="workload-alert">
+          <p><strong>${errorData.details.staffName}</strong> has reached maximum capacity!</p>
+          <div class="workload-stats">
+            <div class="stat">
+              <span class="label">Current Active Cases:</span>
+              <span class="value">${errorData.details.currentWorkload || 'At limit'}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Maximum Allowed:</span>
+              <span class="value">${errorData.details.maxCapacity || 3}</span>
+            </div>
+          </div>
+          <div class="workload-info">
+            <p><strong>🔄 Database Trigger Active:</strong> Your MySQL trigger prevents staff from getting more than ${errorData.details.maxCapacity || 3} active assignments to ensure quality service.</p>
+          </div>
+          <div class="suggestions">
+            <h4>💡 Suggestions:</h4>
+            <ul>
+              <li>Choose a different staff member with lower workload</li>
+              <li>Wait for ${errorData.details.staffName} to resolve some cases</li>
+              <li>Check staff workload in the Staff Management section</li>
+              <li>Consider increasing staff capacity if needed</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="workload-modal-footer">
+        <button class="btn-select-different">Select Different Staff</button>
+        <button class="btn-close-modal">Close</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Event listeners
+  modal.querySelector('.close-workload-modal').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+  
+  modal.querySelector('.btn-close-modal').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+  
+  modal.querySelector('.btn-select-different').addEventListener('click', () => {
+    document.body.removeChild(modal);
+    // Focus on staff dropdown to help user select different staff
+    if (assignStaff) {
+      assignStaff.focus();
+      assignStaff.style.borderColor = '#3b82f6';
+      assignStaff.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+      
+      // Reset styling after 3 seconds
+      setTimeout(() => {
+        assignStaff.style.borderColor = '';
+        assignStaff.style.boxShadow = '';
+      }, 3000);
+    }
+  });
+  
+  // Click outside to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  });
+}
+
+
+// Enhanced success message
+function showSuccessMessage(message) {
+  const successDiv = document.createElement('div');
+  successDiv.className = 'success-notification';
+  successDiv.innerHTML = `
+    <div class="success-content">
+      <i class="fas fa-check-circle"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(successDiv);
+  
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    if (document.body.contains(successDiv)) {
+      document.body.removeChild(successDiv);
+    }
+  }, 4000);
+}
+
+// Enhanced error message
+function showErrorMessage(title, message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-notification';
+  errorDiv.innerHTML = `
+    <div class="error-content">
+      <i class="fas fa-exclamation-triangle"></i>
+      <div>
+        <strong>${title}</strong>
+        <p>${message}</p>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(errorDiv);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (document.body.contains(errorDiv)) {
+      document.body.removeChild(errorDiv);
+    }
+  }, 5000);
+}
 
 // Add this function to fetch stats from your admin endpoint
 async function loadDashboardStats() {
@@ -1087,40 +1298,77 @@ function initializeCharts() {
   initializeTrendsChart();
 }
 
+function generateDynamicColors(count) {
+  const predefinedColors = [
+    '#7c3aed', // Purple (Primary)
+    '#10b981', // Green (Success)  
+    '#f59e0b', // Amber (Warning)
+    '#ef4444', // Red (Danger)
+    '#3b82f6', // Blue
+    '#8b5cf6', // Violet
+    '#06b6d4', // Cyan
+    '#84cc16', // Lime
+    '#f97316', // Orange
+    '#ec4899', // Pink
+    '#6b7280', // Gray
+    '#14b8a6', // Teal
+  ];
+  
+  const colors = [];
+  
+  for (let i = 0; i < count; i++) {
+    if (i < predefinedColors.length) {
+      colors.push(predefinedColors[i]);
+    } else {
+      // Generate random colors if we exceed predefined ones
+      const hue = (i - predefinedColors.length) * 137.508; // Golden angle
+      colors.push(`hsl(${hue % 360}, 70%, 60%)`);
+    }
+  }
+  
+  return colors;
+}
+
 // Initialize department distribution chart
 function initializeDepartmentChart() {
   const ctx = document.getElementById('departmentChart');
   if (!ctx) return;
   
-  const departmentCounts = {
-    'WATER': 0,
-    'ROADS': 0,
-    'WASTE': 0,
-    'ELECTRICITY': 0,
-    'GENERAL': 0,
-    'Unassigned': 0
-  };
+  // If chart already exists, destroy it first
+  if (departmentChart) {
+    departmentChart.destroy();
+  }
+  
+  // Count complaints by department dynamically
+  const departmentCounts = {};
   
   allComplaints.forEach(complaint => {
     const dept = complaint.department || 'Unassigned';
-    if (departmentCounts.hasOwnProperty(dept)) {
-      departmentCounts[dept]++;
-    }
+    departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
   });
+  
+  // If no data, show placeholder
+  if (Object.keys(departmentCounts).length === 0) {
+    departmentCounts['No Data'] = 1;
+  }
+  
+  // Dynamic color generation based on actual departments
+  const departments = Object.keys(departmentCounts);
+  const colors = generateDynamicColors(departments.length);
+  
+  console.log('Department distribution:', departmentCounts);
+  console.log('Generated colors:', colors);
   
   departmentChart = new Chart(ctx, {
     type: 'pie',
     data: {
-      labels: Object.keys(departmentCounts),
+      labels: departments,
       datasets: [{
         data: Object.values(departmentCounts),
-        backgroundColor: [
-          '#7c3aed',
-          '#10b981',
-          '#f59e0b',
-          '#ef4444',
-          '#6b7280'
-        ]
+        backgroundColor: colors,
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        hoverOffset: 4
       }]
     },
     options: {
@@ -1128,12 +1376,35 @@ function initializeDepartmentChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ${value} (${percentage}%)`;
+            }
+          }
         }
+      },
+      animation: {
+        animateRotate: true,
+        animateScale: true
       }
     }
   });
 }
+
 
 // Initialize trends chart
 function initializeTrendsChart() {
@@ -1424,3 +1695,7 @@ window.viewComplaintDetails = viewComplaintDetails;
 window.openAssignmentForm = openAssignmentForm;
 
 console.log('Admin Dashboard loaded successfully');
+
+
+
+
