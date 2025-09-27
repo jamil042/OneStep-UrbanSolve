@@ -1356,3 +1356,153 @@ tr:hover {
     font-size: 12px;
     margin-top: 5px;
 }
+
+/* Success Notification Styles */
+.success-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+    z-index: 10000;
+    animation: slideInRight 0.4s ease-out;
+    max-width: 400px;
+    border-left: 4px solid #065f46;
+}
+
+.success-notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.success-notification-content i {
+    font-size: 20px;
+    color: #d1fae5;
+}
+
+.success-notification-text {
+    flex: 1;
+}
+
+.success-notification-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.success-notification-message {
+    font-size: 13px;
+    color: #d1fae5;
+    line-height: 1.4;
+}
+
+.success-notification-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.success-notification-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.success-notification.slide-out {
+    animation: slideOutRight 0.3s ease-in forwards;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .success-notification {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+}
+
+/* Info Notification Styles */
+.info-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+    z-index: 10000;
+    animation: slideInRight 0.4s ease-out;
+    max-width: 400px;
+    border-left: 4px solid #1d4ed8;
+}
+
+.info-notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.info-notification-content i {
+    font-size: 20px;
+    color: #dbeafe;
+}
+
+.info-notification-text {
+    flex: 1;
+}
+
+.info-notification-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.info-notification-message {
+    font-size: 13px;
+    color: #dbeafe;
+    line-height: 1.4;
+}
+
+.info-notification-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.info-notification-close:hover {
+    opacity: 1;
+}

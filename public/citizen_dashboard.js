@@ -476,12 +476,13 @@ function viewComplaintDetails(id) {
 }
 
 // Show feedback form for resolved complaints
+// Show feedback form for resolved complaints
 async function showFeedbackForm(complaintId) {
     const complaint = complaints.find(c => c.id === complaintId);
     if (!complaint) return;
     
     if (complaint.status !== 'Resolved') {
-        alert('You can only provide feedback for resolved complaints.');
+        showErrorNotification('Feedback Not Available', 'You can only provide feedback for resolved complaints.');
         return;
     }
     
@@ -490,7 +491,8 @@ async function showFeedbackForm(complaintId) {
         const response = await fetch(`/api/complaints/${complaintId}/feedback/${currentUser.id}`);
         if (response.ok) {
             const existingFeedback = await response.json();
-            alert('You have already submitted feedback for this complaint.');
+            // Show nice info notification instead of alert
+            showFeedbackAlreadySubmittedNotification(complaintId, existingFeedback);
             return;
         }
     } catch (error) {
@@ -604,6 +606,7 @@ function clearFeedbackErrors() {
 }
 
 // Submit feedback
+// Submit feedback
 async function submitFeedback() {
     if (!validateFeedbackForm() || !currentFeedbackComplaintId || !currentUser) return;
     
@@ -628,7 +631,8 @@ async function submitFeedback() {
         const result = await response.json();
         
         if (result.success) {
-            alert('Thank you for your feedback! It has been submitted successfully.');
+            // Show nice success notification instead of alert
+            showFeedbackSuccessNotification();
             closeFeedbackModal();
             
             // Add notification
@@ -641,11 +645,11 @@ async function submitFeedback() {
             renderNotifications();
             
         } else {
-            alert('Error: ' + (result.error || 'Failed to submit feedback'));
+            showErrorNotification('Feedback Error', result.error || 'Failed to submit feedback');
         }
     } catch (error) {
         console.error('Error submitting feedback:', error);
-        alert('Network error. Please try again.');
+        showErrorNotification('Network Error', 'Please check your connection and try again.');
     } finally {
         submitFeedbackBtn.disabled = false;
         submitFeedbackBtn.textContent = 'Submit Feedback';
@@ -867,6 +871,82 @@ function clearFormErrors() {
     el.classList.remove('error');
   });
 }
+// Show feedback already submitted notification
+function showFeedbackAlreadySubmittedNotification(complaintId, existingFeedback) {
+    const notification = document.createElement('div');
+    notification.className = 'info-notification';
+    
+    const submissionDate = new Date(existingFeedback.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    
+    const stars = '★'.repeat(existingFeedback.rating) + '☆'.repeat(5 - existingFeedback.rating);
+    
+    notification.innerHTML = `
+        <div class="info-notification-content">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-notification-text">
+                <div class="info-notification-title">Feedback Already Submitted</div>
+                <div class="info-notification-message">
+                    You already submitted feedback for complaint #${complaintId} on ${submissionDate}.<br>
+                    <strong>Your Rating:</strong> ${stars} (${existingFeedback.rating}/5)
+                </div>
+            </div>
+            <button class="info-notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 6 seconds (longer to read the rating info)
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 6000);
+}
+
+// Show general info notification
+function showInfoNotification(title, message) {
+    const notification = document.createElement('div');
+    notification.className = 'info-notification';
+    
+    notification.innerHTML = `
+        <div class="info-notification-content">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-notification-text">
+                <div class="info-notification-title">${title}</div>
+                <div class="info-notification-message">${message}</div>
+            </div>
+            <button class="info-notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
 
 function validateForm() {
   let isValid = true;
@@ -1004,6 +1084,115 @@ async function handleComplaintSubmit(e) {
   }
 }
 
+// Show feedback success notification
+function showFeedbackSuccessNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    
+    notification.innerHTML = `
+        <div class="success-notification-content">
+            <i class="fas fa-check-circle"></i>
+            <div class="success-notification-text">
+                <div class="success-notification-title">Feedback Submitted Successfully!</div>
+                <div class="success-notification-message">
+                    Thank you for your valuable feedback on complaint #${currentFeedbackComplaintId}. 
+                    Your input helps us improve our services.
+                </div>
+            </div>
+            <button class="success-notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// Show error notification
+function showErrorNotification(title, message) {
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+        z-index: 10000;
+        animation: slideInRight 0.4s ease-out;
+        max-width: 400px;
+        border-left: 4px solid #991b1b;
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 20px; color: #fecaca;"></i>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${title}</div>
+                <div style="font-size: 13px; color: #fecaca; line-height: 1.4;">${message}</div>
+            </div>
+            <button onclick="closeNotification(this)" style="background: none; border: none; color: white; font-size: 16px; cursor: pointer; opacity: 0.7;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 6 seconds (longer for error messages)
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 6000);
+}
+
+// Close notification manually
+function closeNotification(button) {
+    const notification = button.closest('.success-notification, .error-notification');
+    if (notification) {
+        notification.classList.add('slide-out');
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }
+}
+
+// Close notification manually
+function closeNotification(button) {
+    const notification = button.closest('.success-notification, .error-notification, .info-notification');
+    if (notification) {
+        notification.classList.add('slide-out');
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }
+}
+
 function logout() {
   if (confirm('Are you sure you want to logout?')) {
     sessionStorage.removeItem('user');
@@ -1071,3 +1260,14 @@ window.updateDashboardStats = updateDashboardStats;
 window.renderComplaintsTable = renderComplaintsTable;
 window.checkLogin = checkLogin;
 window.trackComplaints = trackComplaints;
+
+// Make notification functions globally accessible
+window.showFeedbackSuccessNotification = showFeedbackSuccessNotification;
+window.showErrorNotification = showErrorNotification;
+window.closeNotification = closeNotification;
+// Make notification functions globally accessible
+window.showFeedbackSuccessNotification = showFeedbackSuccessNotification;
+window.showErrorNotification = showErrorNotification;
+window.showInfoNotification = showInfoNotification;
+window.showFeedbackAlreadySubmittedNotification = showFeedbackAlreadySubmittedNotification;
+window.closeNotification = closeNotification;
