@@ -1300,3 +1300,59 @@ tr:hover {
     font-size: 1.5rem;
   }
 }
+/* Feedback Modal Styles */
+.feedback-complaint-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.star-rating {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.star {
+    font-size: 24px;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.star:hover,
+.star.hover {
+    color: #ffc107;
+}
+
+.star.selected {
+    color: #ffc107;
+}
+
+.feedback-btn {
+    background: #17a2b8;
+    border: none;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 8px;
+    transition: background 0.2s;
+}
+
+.feedback-btn:hover {
+    background: #138496;
+}
+
+#feedbackModal .form-group {
+    margin-bottom: 20px;
+}
+
+#feedbackModal .error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 5px;
+}

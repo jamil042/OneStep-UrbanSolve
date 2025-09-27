@@ -44,6 +44,9 @@ const saveDepartmentBtn = document.getElementById('saveDepartmentBtn');
 const saveStaffBtn = document.getElementById('saveStaffBtn');
 const cancelDepartmentBtn = document.getElementById('cancelDepartmentBtn');
 const cancelStaffBtn = document.getElementById('cancelStaffBtn');
+const refreshFeedbackBtn = document.getElementById('refreshFeedbackBtn');
+const feedbackTableBody = document.getElementById('feedbackTableBody');
+let feedbackData = [];
 
 // Global variables
 let allComplaints = [];
@@ -179,6 +182,7 @@ async function initAdminDashboard() {
   await loadAllComplaints();
   await loadStaffMembers();
   await loadReportsData();
+  await loadFeedbackData();
   await fetchAndPopulateDepartments();
   await loadDashboardStats();
   
@@ -452,6 +456,76 @@ async function loadReportsData() {
     } catch (error) {
         console.error('Error loading reports data:', error);
         showReportsError('Failed to load reports data. Please try again.');
+    }
+}
+
+// Load feedback data for admin
+async function loadFeedbackData() {
+    try {
+        console.log('=== LOADING FEEDBACK DATA ===');
+        
+        const response = await fetch('/api/admin/feedback');
+        if (!response.ok) {
+            throw new Error('Failed to fetch feedback data: ' + response.status);
+        }
+        
+        feedbackData = await response.json();
+        console.log('Feedback data loaded:', feedbackData);
+        
+        renderFeedbackTable();
+        
+    } catch (error) {
+        console.error('Error loading feedback data:', error);
+        showFeedbackError('Failed to load feedback data. Please try again.');
+    }
+}
+
+// Render feedback table
+function renderFeedbackTable() {
+    if (!feedbackTableBody || !feedbackData || feedbackData.length === 0) {
+        if (feedbackTableBody) {
+            feedbackTableBody.innerHTML = '<tr><td colspan="5" class="no-data">No feedback submitted yet</td></tr>';
+        }
+        return;
+    }
+    
+    feedbackTableBody.innerHTML = feedbackData.map(feedback => {
+        const stars = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
+        
+        return `
+            <tr>
+                <td>
+                    <div class="complaint-info">
+                        <strong>#${feedback.complaint_id}</strong>
+                        <span class="complaint-title">${feedback.complaint_title}</span>
+                        <span class="status-badge ${feedback.complaint_status.toLowerCase().replace(' ', '-')}">${feedback.complaint_status}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="citizen-info">
+                        <strong>${feedback.citizen_name}</strong>
+                        <small>${feedback.citizen_email}</small>
+                    </div>
+                </td>
+                <td>
+                    <div class="rating-display">
+                        <span class="stars">${stars}</span>
+                        <span class="rating-number">(${feedback.rating}/5)</span>
+                    </div>
+                </td>
+                <td class="feedback-comment">${feedback.comment}</td>
+                <td class="feedback-date">${formatDate(feedback.created_at)}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('Feedback table rendered with', feedbackData.length, 'entries');
+}
+
+// Show error message for feedback
+function showFeedbackError(message) {
+    if (feedbackTableBody) {
+        feedbackTableBody.innerHTML = `<tr><td colspan="5" class="error">${message}</td></tr>`;
     }
 }
 
@@ -1666,6 +1740,21 @@ if (staffModal) {
     }
   });
 }
+
+// Feedback refresh button
+if (refreshFeedbackBtn) {
+    refreshFeedbackBtn.addEventListener('click', async () => {
+        const originalText = refreshFeedbackBtn.innerHTML;
+        refreshFeedbackBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshFeedbackBtn.disabled = true;
+        
+        await loadFeedbackData();
+        
+        refreshFeedbackBtn.innerHTML = originalText;
+        refreshFeedbackBtn.disabled = false;
+    });
+}
+
 
 const refreshReportsBtn = document.getElementById('refreshReportsBtn');
 if (refreshReportsBtn) {

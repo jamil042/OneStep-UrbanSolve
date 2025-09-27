@@ -29,6 +29,19 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const closeModalBtn2 = document.getElementById('closeModalBtn2');
 const modalTitle = document.getElementById('modalTitle');
 const modalBody = document.getElementById('modalBody');
+// Feedback modal elements
+const feedbackModal = document.getElementById('feedbackModal');
+const closeFeedbackModalBtn = document.getElementById('closeFeedbackModalBtn');
+const feedbackModalTitle = document.getElementById('feedbackModalTitle');
+const feedbackComplaintInfo = document.getElementById('feedbackComplaintInfo');
+const feedbackForm = document.getElementById('feedbackForm');
+const starRating = document.getElementById('starRating');
+const feedbackRating = document.getElementById('feedbackRating');
+const feedbackComment = document.getElementById('feedbackComment');
+const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
+const submitFeedbackBtn = document.getElementById('submitFeedbackBtn');
+
+let currentFeedbackComplaintId = null;
 
 // Mock location data (keeping existing functionality)
 const locationData = {
@@ -357,16 +370,22 @@ function renderComplaintsTable() {
   }
   
   complaintsTableBody.innerHTML = filteredComplaints.map(complaint => `
-    <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
-      <td>#${complaint.id}</td>
-      <td><strong>${complaint.title}</strong></td>
-      <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
-      <td>${complaint.dept}</td>
-      <td>${complaint.zone} - ${complaint.ward} - ${complaint.areaName}</td>
-      <td><span class="priority-${complaint.priority.toLowerCase()}">${complaint.priority}</span></td>
-      <td>${complaint.lastUpdated}</td>
-    </tr>
-  `).join('');
+  <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
+    <td>#${complaint.id}</td>
+    <td>
+      <strong>${complaint.title}</strong>
+      ${complaint.status === 'Resolved' ? 
+        `<button class="feedback-btn" onclick="event.stopPropagation(); showFeedbackForm(${complaint.id})" title="Give Feedback">
+          <i class="fas fa-comment-dots"></i>
+        </button>` : ''}
+    </td>
+    <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
+    <td>${complaint.dept}</td>
+    <td>${complaint.zone} - ${complaint.ward} - ${complaint.areaName}</td>
+    <td><span class="priority-${complaint.priority.toLowerCase()}">${complaint.priority}</span></td>
+    <td>${complaint.lastUpdated}</td>
+  </tr>
+`).join('');
   
   console.log('Complaints table rendered successfully');
 }
@@ -454,6 +473,194 @@ function viewComplaintDetails(id) {
   if (complaintModal) {
     complaintModal.classList.add('show');
   }
+}
+
+// Show feedback form for resolved complaints
+async function showFeedbackForm(complaintId) {
+    const complaint = complaints.find(c => c.id === complaintId);
+    if (!complaint) return;
+    
+    if (complaint.status !== 'Resolved') {
+        alert('You can only provide feedback for resolved complaints.');
+        return;
+    }
+    
+    // Check if feedback already exists
+    try {
+        const response = await fetch(`/api/complaints/${complaintId}/feedback/${currentUser.id}`);
+        if (response.ok) {
+            const existingFeedback = await response.json();
+            alert('You have already submitted feedback for this complaint.');
+            return;
+        }
+    } catch (error) {
+        // No existing feedback, continue
+    }
+    
+    currentFeedbackComplaintId = complaintId;
+    
+    if (feedbackModalTitle) {
+        feedbackModalTitle.textContent = `Feedback for Complaint #${complaintId}`;
+    }
+    
+    if (feedbackComplaintInfo) {
+        feedbackComplaintInfo.innerHTML = `
+            <div class="feedback-complaint-info">
+                <h4>${complaint.title}</h4>
+                <p><strong>Status:</strong> <span class="status-badge resolved">${complaint.status}</span></p>
+                <p><strong>Department:</strong> ${complaint.dept}</p>
+                <p><strong>Resolution Date:</strong> ${complaint.lastUpdated}</p>
+            </div>
+        `;
+    }
+    
+    // Reset form
+    if (feedbackForm) feedbackForm.reset();
+    if (feedbackRating) feedbackRating.value = '';
+    resetStarRating();
+    clearFeedbackErrors();
+    
+    if (feedbackModal) {
+        feedbackModal.classList.add('show');
+    }
+}
+
+// Handle star rating clicks
+function handleStarRating() {
+    if (!starRating) return;
+    
+    const stars = starRating.querySelectorAll('.star');
+    
+    stars.forEach((star, index) => {
+        star.addEventListener('click', () => {
+            const rating = parseInt(star.dataset.rating);
+            feedbackRating.value = rating;
+            
+            // Update visual state
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.classList.add('selected');
+                } else {
+                    s.classList.remove('selected');
+                }
+            });
+        });
+        
+        star.addEventListener('mouseover', () => {
+            const rating = parseInt(star.dataset.rating);
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.classList.add('hover');
+                } else {
+                    s.classList.remove('hover');
+                }
+            });
+        });
+    });
+    
+    starRating.addEventListener('mouseleave', () => {
+        stars.forEach(s => s.classList.remove('hover'));
+    });
+}
+
+// Reset star rating visual state
+function resetStarRating() {
+    if (!starRating) return;
+    const stars = starRating.querySelectorAll('.star');
+    stars.forEach(star => {
+        star.classList.remove('selected', 'hover');
+    });
+}
+
+// Validate feedback form
+function validateFeedbackForm() {
+    let isValid = true;
+    clearFeedbackErrors();
+    
+    if (!feedbackRating.value) {
+        const ratingError = document.getElementById('ratingError');
+        if (ratingError) ratingError.textContent = 'Please select a rating';
+        isValid = false;
+    }
+    
+    if (!feedbackComment.value.trim()) {
+        const commentError = document.getElementById('commentError');
+        if (commentError) commentError.textContent = 'Please provide your feedback';
+        feedbackComment.classList.add('error');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+// Clear feedback form errors
+function clearFeedbackErrors() {
+    document.querySelectorAll('#feedbackModal .error-message').forEach(el => {
+        el.textContent = '';
+    });
+    document.querySelectorAll('#feedbackModal input, #feedbackModal textarea').forEach(el => {
+        el.classList.remove('error');
+    });
+}
+
+// Submit feedback
+async function submitFeedback() {
+    if (!validateFeedbackForm() || !currentFeedbackComplaintId || !currentUser) return;
+    
+    try {
+        submitFeedbackBtn.disabled = true;
+        submitFeedbackBtn.textContent = 'Submitting...';
+        
+        const feedbackData = {
+            userId: currentUser.id,
+            rating: parseInt(feedbackRating.value),
+            comment: feedbackComment.value.trim()
+        };
+        
+        const response = await fetch(`/api/complaints/${currentFeedbackComplaintId}/feedback`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(feedbackData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Thank you for your feedback! It has been submitted successfully.');
+            closeFeedbackModal();
+            
+            // Add notification
+            notifications.unshift({
+                id: notifications.length + 1,
+                date: new Date().toISOString().split('T')[0],
+                message: `Feedback submitted for complaint #${currentFeedbackComplaintId}`,
+                read: false
+            });
+            renderNotifications();
+            
+        } else {
+            alert('Error: ' + (result.error || 'Failed to submit feedback'));
+        }
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        alert('Network error. Please try again.');
+    } finally {
+        submitFeedbackBtn.disabled = false;
+        submitFeedbackBtn.textContent = 'Submit Feedback';
+    }
+}
+
+// Close feedback modal
+function closeFeedbackModal() {
+    if (feedbackModal) {
+        feedbackModal.classList.remove('show');
+    }
+    currentFeedbackComplaintId = null;
+    if (feedbackForm) feedbackForm.reset();
+    resetStarRating();
+    clearFeedbackErrors();
 }
 
 // NEW: Improved tracking function with modal interface
@@ -833,6 +1040,27 @@ if (notificationBell) {
 if (logoutBtn) logoutBtn.addEventListener('click', logout);
 if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
 if (closeModalBtn2) closeModalBtn2.addEventListener('click', closeModal);
+
+// Feedback modal event listeners
+if (closeFeedbackModalBtn) closeFeedbackModalBtn.addEventListener('click', closeFeedbackModal);
+if (cancelFeedbackBtn) cancelFeedbackBtn.addEventListener('click', closeFeedbackModal);
+if (submitFeedbackBtn) submitFeedbackBtn.addEventListener('click', submitFeedback);
+
+// Initialize star rating functionality
+handleStarRating();
+
+// Click outside modal to close feedback modal
+if (feedbackModal) {
+    feedbackModal.addEventListener('click', function(e) {
+        if (e.target === feedbackModal) {
+            closeFeedbackModal();
+        }
+    });
+}
+
+// Make feedback functions globally accessible
+window.showFeedbackForm = showFeedbackForm;
+window.submitFeedback = submitFeedback;
 
 // Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', initDashboard);

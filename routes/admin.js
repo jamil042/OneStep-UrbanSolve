@@ -444,4 +444,36 @@ router.get('/staff/:staffId/workload', (req, res) => {
     });
 });
 
+// Get all feedback for admin dashboard
+router.get('/feedback', (req, res) => {
+    console.log('=== ADMIN FEEDBACK FETCH ===');
+    
+    const query = `
+        SELECT 
+            f.feedback_id,
+            f.complaint_id,
+            f.rating,
+            f.comments as comment,
+            f.created_at,
+            c.title as complaint_title,
+            c.status as complaint_status,
+            u.name as citizen_name,
+            u.email as citizen_email
+        FROM Feedback f
+        JOIN Complaints c ON f.complaint_id = c.complaint_id
+        JOIN Users u ON f.user_id = u.user_id
+        ORDER BY f.created_at DESC
+    `;
+
+    pool.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching feedback:', err);
+            return res.status(500).json({ error: 'Error fetching feedback: ' + err.message });
+        }
+
+        console.log('Found', results.length, 'feedback entries');
+        res.json(results);
+    });
+});
+
 module.exports = router;

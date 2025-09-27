@@ -252,6 +252,47 @@
     </section>
   </main>
 
+  <!-- Feedback Modal -->
+<div class="modal" id="feedbackModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="feedbackModalTitle">Submit Feedback</h3>
+      <button class="close-btn" id="closeFeedbackModalBtn" type="button">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="feedback-info" id="feedbackComplaintInfo">
+        <!-- Complaint info will be inserted here -->
+      </div>
+      
+      <form id="feedbackForm">
+        <div class="form-group">
+          <label for="feedbackRating">Rating *</label>
+          <div class="star-rating" id="starRating">
+            <span class="star" data-rating="1">★</span>
+            <span class="star" data-rating="2">★</span>
+            <span class="star" data-rating="3">★</span>
+            <span class="star" data-rating="4">★</span>
+            <span class="star" data-rating="5">★</span>
+          </div>
+          <input type="hidden" id="feedbackRating" name="rating" required>
+          <span class="error-message" id="ratingError"></span>
+        </div>
+        
+        <div class="form-group">
+          <label for="feedbackComment">Your Feedback *</label>
+          <textarea id="feedbackComment" name="comment" rows="4" 
+                    placeholder="Please share your experience with the resolution of this complaint..." required></textarea>
+          <span class="error-message" id="commentError"></span>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" id="cancelFeedbackBtn" type="button">Cancel</button>
+      <button class="modal-btn primary" id="submitFeedbackBtn" type="button">Submit Feedback</button>
+    </div>
+  </div>
+</div>
+
   <!-- Complaint Details Modal -->
   <div class="modal" id="complaintModal">
     <div class="modal-content">

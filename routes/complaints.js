@@ -362,4 +362,78 @@ router.put('/complaints/:complaintId/status', (req, res) => {
     });
 });
 
+// Submit feedback for a complaint
+router.post('/complaints/:complaintId/feedback', (req, res) => {
+    const { complaintId } = req.params;
+    const { userId, rating, comment } = req.body;
+
+    console.log(`=== SUBMITTING FEEDBACK FOR COMPLAINT #${complaintId} ===`);
+    
+    if (!userId || !rating || !comment) {
+        return res.status(400).json({ error: 'Missing required fields: userId, rating, comment' });
+    }
+
+    if (rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+
+    // Check if user already submitted feedback for this complaint
+    const checkQuery = 'SELECT * FROM Feedback WHERE complaint_id = ? AND user_id = ?';
+    
+    pool.query(checkQuery, [complaintId, userId], (err, existing) => {
+        if (err) {
+            console.error('Error checking existing feedback:', err);
+            return res.status(500).json({ error: 'Error checking existing feedback: ' + err.message });
+        }
+
+        if (existing.length > 0) {
+            return res.status(409).json({ error: 'You have already submitted feedback for this complaint' });
+        }
+
+        // Insert new feedback
+        const insertQuery = `
+            INSERT INTO Feedback (complaint_id, user_id, rating, comments, created_at) 
+            VALUES (?, ?, ?, ?, NOW())
+        `;
+
+        pool.query(insertQuery, [complaintId, userId, rating, comment], (err, result) => {
+            if (err) {
+                console.error('Error inserting feedback:', err);
+                return res.status(500).json({ error: 'Error submitting feedback: ' + err.message });
+            }
+
+            console.log(`✅ Feedback submitted successfully for complaint #${complaintId}`);
+            res.json({ 
+                success: true, 
+                message: 'Feedback submitted successfully',
+                feedbackId: result.insertId
+            });
+        });
+    });
+});
+
+// Get feedback for a specific complaint (for checking if already submitted)
+router.get('/complaints/:complaintId/feedback/:userId', (req, res) => {
+    const { complaintId, userId } = req.params;
+
+    const query = `
+        SELECT feedback_id, rating, comments, created_at 
+        FROM Feedback 
+        WHERE complaint_id = ? AND user_id = ?
+    `;
+
+    pool.query(query, [complaintId, userId], (err, results) => {
+        if (err) {
+            console.error('Error fetching feedback:', err);
+            return res.status(500).json({ error: 'Error fetching feedback: ' + err.message });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'No feedback found' });
+        }
+
+        res.json(results[0]);
+    });
+});
+
 module.exports = router;

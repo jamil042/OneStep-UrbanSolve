@@ -1,6 +1,6 @@
 /* Base Styles - Same as staff dashboard but with admin color scheme */
 :root {
-  --primary: #7c3aed;
+  --primary:  #24094efd;
   --primary-dark: #6d28d9;
   --secondary: #e5e7eb;
   --success: #10b981;
@@ -150,7 +150,7 @@ body {
 
 /* Welcome Banner - Admin specific gradient */
 .welcome-banner {
-  background: linear-gradient(135deg, #7c3aed 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, #0d022c 0%, var(--primary-dark) 100%);
   color: var(--white);
   padding: 1.5rem;
   border-radius: var(--radius);
@@ -1640,4 +1640,59 @@ select option[disabled] {
     background: rgba(255, 255, 255, 0.5);
     border-radius: 6px;
   }
+}
+
+/* Feedback Section Styles */
+.feedback-section {
+    margin: 30px 0;
+}
+
+.feedback-container .table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.rating-display {
+    text-align: center;
+}
+
+.stars {
+    color: #ffc107;
+    font-size: 16px;
+    display: block;
+}
+
+.rating-number {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.feedback-comment {
+    max-width: 300px;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.complaint-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.complaint-title {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.citizen-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.citizen-info small {
+    color: #6c757d;
+}
+
+.feedback-date {
+    white-space: nowrap;
 }
