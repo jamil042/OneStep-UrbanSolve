@@ -1695,7 +1695,3 @@ window.viewComplaintDetails = viewComplaintDetails;
 window.openAssignmentForm = openAssignmentForm;
 
 console.log('Admin Dashboard loaded successfully');
-
-
-
-

@@ -1,4 +1,4 @@
-// FIXED VERSION - citizen_dashboard.js with proper session handling
+// UPDATED VERSION - citizen_dashboard.js with complaint tracking modal
 
 // DOM Elements
 const newComplaintBtn = document.getElementById('newComplaintBtn');
@@ -68,7 +68,6 @@ let notifications = [
 let currentUser = null;
 
 // FIXED: Improved login check with retry mechanism
-// FIXED: Improved login check without hardcoded fallback
 function checkLogin() {
   console.log('=== CHECKING LOGIN STATUS ===');
   
@@ -372,7 +371,6 @@ function renderComplaintsTable() {
   console.log('Complaints table rendered successfully');
 }
 
-// Rest of the functions remain the same...
 function renderNotifications() {
   const unreadCount = notifications.filter(n => !n.read).length;
   if (notificationBadge) {
@@ -449,6 +447,119 @@ function viewComplaintDetails(id) {
       <div class="complaint-detail">
         <h4>Last Updated</h4>
         <p>${complaint.lastUpdated}</p>
+      </div>
+    `;
+  }
+  
+  if (complaintModal) {
+    complaintModal.classList.add('show');
+  }
+}
+
+// NEW: Improved tracking function with modal interface
+function trackComplaints() {
+  const total = complaints.length;
+  const pending = complaints.filter(c => c.status === 'Pending').length;
+  const inProgress = complaints.filter(c => c.status === 'In Progress').length;
+  const resolved = complaints.filter(c => c.status === 'Resolved').length;
+  const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  
+  // Calculate average resolution time (mock data for demonstration)
+  const avgResolutionTime = resolved > 0 ? Math.round(Math.random() * 10 + 5) : 0;
+  
+  // Get recent activity
+  const recentComplaints = complaints
+    .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
+    .slice(0, 5);
+  
+  if (modalTitle) modalTitle.textContent = 'Complaint Tracking Summary';
+  
+  if (modalBody) {
+    modalBody.innerHTML = `
+      <div class="tracking-summary">
+        <div class="tracking-header">
+          <h4><i class="fas fa-chart-bar"></i> Your Complaint Statistics</h4>
+          <p class="tracking-subtitle">Track all your submitted complaints and their current status</p>
+        </div>
+        
+        <div class="tracking-stats">
+          <div class="tracking-stat-card">
+            <div class="stat-number">${total}</div>
+            <div class="stat-label">Total Complaints</div>
+            <i class="fas fa-file-alt stat-icon"></i>
+          </div>
+          
+          <div class="tracking-stat-card pending">
+            <div class="stat-number">${pending}</div>
+            <div class="stat-label">Pending</div>
+            <i class="fas fa-clock stat-icon"></i>
+          </div>
+          
+          <div class="tracking-stat-card in-progress">
+            <div class="stat-number">${inProgress}</div>
+            <div class="stat-label">In Progress</div>
+            <i class="fas fa-sync-alt stat-icon"></i>
+          </div>
+          
+          <div class="tracking-stat-card resolved">
+            <div class="stat-number">${resolved}</div>
+            <div class="stat-label">Resolved</div>
+            <i class="fas fa-check-circle stat-icon"></i>
+          </div>
+        </div>
+        
+        <div class="tracking-metrics">
+          <div class="metric-card">
+            <h5><i class="fas fa-percentage"></i> Resolution Rate</h5>
+            <div class="metric-value">${resolutionRate}%</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${resolutionRate}%;"></div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <h5><i class="fas fa-stopwatch"></i> Avg. Resolution Time</h5>
+            <div class="metric-value">${avgResolutionTime} days</div>
+            <div class="metric-note">Average time to resolve complaints</div>
+          </div>
+        </div>
+        
+        ${total > 0 ? `
+        <div class="recent-activity">
+          <h5><i class="fas fa-history"></i> Recent Activity</h5>
+          <div class="activity-list">
+            ${recentComplaints.map(complaint => `
+              <div class="activity-item" onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
+                <div class="activity-icon">
+                  <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-title">${complaint.title}</div>
+                  <div class="activity-meta">#${complaint.id} • ${complaint.dept} • ${complaint.lastUpdated}</div>
+                </div>
+                <i class="fas fa-arrow-right activity-arrow"></i>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : `
+        <div class="no-complaints">
+          <i class="fas fa-clipboard-list"></i>
+          <h5>No complaints yet</h5>
+          <p>You haven't submitted any complaints yet. Click "Submit New Complaint" to get started!</p>
+        </div>
+        `}
+        
+        <div class="tracking-actions">
+          <button class="tracking-action-btn primary" onclick="closeModal(); showComplaintForm();">
+            <i class="fas fa-plus"></i> Submit New Complaint
+          </button>
+          ${total > 0 ? `
+          <button class="tracking-action-btn secondary" onclick="closeModal(); document.querySelector('.complaint-history').scrollIntoView({behavior: 'smooth'});">
+            <i class="fas fa-list"></i> View All Complaints
+          </button>
+          ` : ''}
+        </div>
       </div>
     `;
   }
@@ -686,14 +797,6 @@ async function handleComplaintSubmit(e) {
   }
 }
 
-function trackComplaints() {
-  const pending = complaints.filter(c => c.status === 'Pending').length;
-  const inProgress = complaints.filter(c => c.status === 'In Progress').length;
-  const resolved = complaints.filter(c => c.status === 'Resolved').length;
-  
-  alert(`Complaint Tracking Summary:\n\nTotal: ${complaints.length}\nPending: ${pending}\nIn Progress: ${inProgress}\nResolved: ${resolved}`);
-}
-
 function logout() {
   if (confirm('Are you sure you want to logout?')) {
     sessionStorage.removeItem('user');
@@ -739,3 +842,4 @@ window.loadUserComplaints = loadUserComplaints;
 window.updateDashboardStats = updateDashboardStats;
 window.renderComplaintsTable = renderComplaintsTable;
 window.checkLogin = checkLogin;
+window.trackComplaints = trackComplaints;
