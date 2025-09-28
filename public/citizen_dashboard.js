@@ -1069,7 +1069,7 @@ async function handleComplaintSubmit(e) {
       hideComplaintForm();
       
       // Show success message
-      alert(`Complaint submitted successfully!\n\nTracking ID: #${result.complaint_id}`);
+showSuccessModal(complaintData, result.complaint_id);
     } else {
       alert('Error: ' + (result.error || 'Failed to submit complaint'));
     }
@@ -1201,6 +1201,92 @@ function logout() {
   }
 }
 
+// Success Modal Functions
+function showSuccessModal(complaintData, trackingId) {
+  // Update modal content with real data
+  document.getElementById('modalTrackingId').textContent = `#${trackingId}`;
+  document.getElementById('modalComplaintTitle').textContent = complaintData.title;
+  document.getElementById('modalDepartment').textContent = mapProblemTypeToDept(complaintData.problemType);
+  document.getElementById('modalPriority').textContent = 'Medium';
+  
+  // Calculate expected response time based on problem type
+  const expectedResponse = getExpectedResponse(complaintData.problemType);
+  document.getElementById('modalExpectedResponse').textContent = expectedResponse;
+  
+  // Show modal with proper scroll handling
+  const modal = document.getElementById('successModal');
+  modal.style.display = 'flex';
+  
+  // Prevent background scroll but allow modal scroll
+  document.body.style.overflow = 'hidden';
+  document.body.style.paddingRight = getScrollbarWidth() + 'px'; // Prevent layout shift
+  
+  // Focus management for accessibility
+  setTimeout(() => {
+    const closeButton = modal.querySelector('.close-button');
+    if (closeButton) closeButton.focus();
+  }, 600);
+}
+function closeSuccessModal() {
+  const modal = document.getElementById('successModal');
+  const modalContent = modal.querySelector('.success-modal');
+  
+  // Add closing animation
+  if (modalContent) {
+    modalContent.style.transform = 'scale(0.9) translateY(30px)';
+    modalContent.style.opacity = '0';
+  }
+  
+  // Hide modal after animation and restore scrolling
+  setTimeout(() => {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = ''; // Remove scrollbar compensation
+    
+    // Reset transform for next use
+    if (modalContent) {
+      modalContent.style.transform = '';
+      modalContent.style.opacity = '';
+    }
+  }, 300);
+}
+function trackComplaintFromModal() {
+  closeSuccessModal();
+  trackComplaints(); // This calls your existing track function
+}
+
+function getExpectedResponse(problemType) {
+  const urgentTypes = ['water-leak', 'power-outage', 'sewage-overflow'];
+  const normalTypes = ['pothole', 'street-light', 'garbage-collection'];
+  
+  if (urgentTypes.includes(problemType)) {
+    return '1-2 business days';
+  } else if (normalTypes.includes(problemType)) {
+    return '3-5 business days';
+  } else {
+    return '2-3 business days';
+  }
+}
+
+// Helper function to get scrollbar width and prevent layout shift
+function getScrollbarWidth() {
+  const outer = document.createElement('div');
+  outer.style.visibility = 'hidden';
+  outer.style.overflow = 'scroll';
+  outer.style.msOverflowStyle = 'scrollbar';
+  document.body.appendChild(outer);
+  
+  const inner = document.createElement('div');
+  outer.appendChild(inner);
+  
+  const scrollbarWidth = (outer.offsetWidth - inner.offsetWidth);
+  outer.parentNode.removeChild(outer);
+  
+  return scrollbarWidth;
+}
+
+
+
 // Event Listeners
 if (newComplaintBtn) newComplaintBtn.addEventListener('click', showComplaintForm);
 if (trackComplaintsBtn) trackComplaintsBtn.addEventListener('click', trackComplaints);
@@ -1246,6 +1332,19 @@ if (feedbackModal) {
         }
     });
 }
+// Success modal event listeners
+   document.getElementById('successModal').addEventListener('click', function(e) {
+     if (e.target === this) {
+       closeSuccessModal();
+     }
+   });
+
+   // Close modal with Escape key
+   document.addEventListener('keydown', function(e) {
+     if (e.key === 'Escape' && document.getElementById('successModal').style.display === 'flex') {
+       closeSuccessModal();
+     }
+   });
 
 // Make feedback functions globally accessible
 window.showFeedbackForm = showFeedbackForm;
@@ -1271,3 +1370,7 @@ window.showErrorNotification = showErrorNotification;
 window.showInfoNotification = showInfoNotification;
 window.showFeedbackAlreadySubmittedNotification = showFeedbackAlreadySubmittedNotification;
 window.closeNotification = closeNotification;
+// Make functions globally accessible
+window.showSuccessModal = showSuccessModal;
+window.closeSuccessModal = closeSuccessModal;
+window.trackComplaintFromModal = trackComplaintFromModal;

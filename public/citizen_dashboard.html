@@ -317,6 +317,74 @@
     </div>
   </div>
 
+  <!-- Success Modal -->
+<div class="success-modal-overlay" id="successModal" style="display: none;">
+  <div class="success-modal">
+    <button class="close-button" onclick="closeSuccessModal()">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <div class="success-modal-header">
+      <div class="success-icon-container">
+        <i class="fas fa-check success-icon"></i>
+      </div>
+      <h2 class="success-title">Complaint Submitted Successfully!</h2>
+      <p class="success-subtitle">Your complaint has been registered and will be processed soon</p>
+    </div>
+    
+    <div class="success-modal-body">
+      <div class="complaint-details">
+        <div class="detail-row">
+          <span class="detail-label">Tracking ID</span>
+          <span class="detail-value">
+            <span class="tracking-id" id="modalTrackingId">#CM2024-1001</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Title</span>
+          <span class="detail-value" id="modalComplaintTitle">Water Leak Issue</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Department</span>
+          <span class="detail-value" id="modalDepartment">Water Department</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Priority</span>
+          <span class="detail-value" id="modalPriority">Medium</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Expected Response</span>
+          <span class="detail-value" id="modalExpectedResponse">2-3 business days</span>
+        </div>
+      </div>
+
+      <div class="next-steps">
+        <h4>
+          <i class="fas fa-info-circle"></i>
+          What happens next?
+        </h4>
+        <ul class="steps-list">
+          <li>Your complaint will be reviewed by our team within 24 hours</li>
+          <li>You'll receive SMS and email updates on your complaint status</li>
+          <li>A field officer will be assigned to investigate the issue</li>
+          <li>Track your complaint anytime using your tracking ID</li>
+        </ul>
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="trackComplaintFromModal()">
+          <i class="fas fa-search"></i>
+          Track Complaint
+        </button>
+        <button class="btn btn-secondary" onclick="closeSuccessModal()">
+          <i class="fas fa-home"></i>
+          Back to Dashboard
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
   <script src="citizen_dashboard.js"></script>
   
   <!-- Debug Script (remove in production) -->
