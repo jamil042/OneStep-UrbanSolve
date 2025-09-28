@@ -1549,12 +1549,13 @@ function handleAddStaff() {
 }
 
 // Save department
+// Save department
 async function saveDepartment() {
   const departmentName = document.getElementById('departmentName').value.trim();
   const departmentDescription = document.getElementById('departmentDescription').value.trim();
   
   if (!departmentName) {
-    alert('Department name is required');
+    showErrorModal('Validation Error', 'Department name is required');
     return;
   }
 
@@ -1591,14 +1592,15 @@ async function saveDepartment() {
     if (departmentModal) departmentModal.classList.remove('show');
     if (departmentForm) departmentForm.reset();
     
-    alert(`Department "${departmentName}" has been added successfully!`);
+    // Show beautiful success modal instead of alert
+    showDepartmentSuccessModal(departmentName);
     
     // IMPORTANT: Refresh the department list in the "Add Staff" form
     await fetchAndPopulateDepartments();
 
   } catch (error) {
       console.error('Error saving department:', error);
-      alert('Error: ' + error.message);
+      showErrorModal('Department Creation Failed', error.message);
   }
 }
 // Save staff
@@ -1658,6 +1660,129 @@ function viewAllComplaints() {
   if (complaintsTable) {
     complaintsTable.scrollIntoView({ behavior: 'smooth' });
   }
+}
+
+// Show department success modal
+function showDepartmentSuccessModal(departmentName) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'success-modal-overlay';
+    
+    modalOverlay.innerHTML = `
+        <div class="success-modal">
+            <div class="success-modal-header">
+                <button class="success-modal-close" onclick="closeDepartmentSuccessModal(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="success-modal-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="success-modal-title">Department Created Successfully!</h3>
+            </div>
+            <div class="success-modal-body">
+                <p class="success-modal-message">
+                    The department <strong>"${departmentName}"</strong> has been successfully added to the system. 
+                    You can now assign staff members to this department and manage urban issues more effectively.
+                </p>
+            </div>
+            <div class="success-modal-footer">
+                <button class="success-modal-btn" onclick="closeDepartmentSuccessModal(this)">
+                    <i class="fas fa-thumbs-up"></i> Great!
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalOverlay);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(modalOverlay)) {
+            closeDepartmentSuccessModal(modalOverlay);
+        }
+    }, 5000);
+    
+    // Click outside to close
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeDepartmentSuccessModal(modalOverlay);
+        }
+    });
+}
+
+// Close department success modal
+function closeDepartmentSuccessModal(element) {
+    const modalOverlay = element.closest ? element.closest('.success-modal-overlay') : element;
+    if (modalOverlay) {
+        modalOverlay.classList.add('fade-out');
+        setTimeout(() => {
+            if (document.body.contains(modalOverlay)) {
+                document.body.removeChild(modalOverlay);
+            }
+        }, 300);
+    }
+}
+
+// Show error modal
+function showErrorModal(title, message) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'success-modal-overlay';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10001;
+        animation: fadeIn 0.3s ease-out;
+    `;
+    
+    modalOverlay.innerHTML = `
+        <div class="success-modal" style="overflow: hidden;">
+            <div class="success-modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <button class="success-modal-close" onclick="closeErrorModal(this)" style="background: rgba(255, 255, 255, 0.2);">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="success-modal-icon" style="background: rgba(255, 255, 255, 0.2);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="success-modal-title">${title}</h3>
+            </div>
+            <div class="success-modal-body">
+                <p class="success-modal-message">${message}</p>
+            </div>
+            <div class="success-modal-footer">
+                <button class="success-modal-btn" onclick="closeErrorModal(this)" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalOverlay);
+    
+    // Click outside to close
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeErrorModal(modalOverlay);
+        }
+    });
+}
+
+// Close error modal
+function closeErrorModal(element) {
+    const modalOverlay = element.closest ? element.closest('.success-modal-overlay') : element;
+    if (modalOverlay) {
+        modalOverlay.classList.add('fade-out');
+        setTimeout(() => {
+            if (document.body.contains(modalOverlay)) {
+                document.body.removeChild(modalOverlay);
+            }
+        }, 300);
+    }
 }
 
 // Logout function
@@ -1782,5 +1907,9 @@ window.renderComplaintsTable = renderComplaintsTable;
 window.checkAdminLogin = checkAdminLogin;
 window.viewComplaintDetails = viewComplaintDetails;
 window.openAssignmentForm = openAssignmentForm;
+window.showDepartmentSuccessModal = showDepartmentSuccessModal;
+window.closeDepartmentSuccessModal = closeDepartmentSuccessModal;
+window.showErrorModal = showErrorModal;
+window.closeErrorModal = closeErrorModal;
 
 console.log('Admin Dashboard loaded successfully');
