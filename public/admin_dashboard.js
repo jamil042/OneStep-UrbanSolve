@@ -1,4 +1,4 @@
-// DOM Elements
+// DOM Elements - FIXED: Updated to match HTML IDs
 const addDepartmentBtn = document.getElementById('addDepartmentBtn');
 const addProblemTypeBtn = document.getElementById('addProblemTypeBtn');
 const addStaffBtn = document.getElementById('addStaffBtn');
@@ -8,10 +8,13 @@ const closeAssignmentFormBtn = document.getElementById('closeAssignmentFormBtn')
 const cancelAssignmentBtn = document.getElementById('cancelAssignmentBtn');
 const assignmentForm = document.getElementById('assignmentForm');
 const selectedComplaintInfo = document.getElementById('selectedComplaintInfo');
-const assignDepartment = document.getElementById('assignDepartment');
+
+// FIXED: Changed from 'assignDepartment' to 'staffDepartment' to match HTML
+const assignDepartment = document.getElementById('staffDepartment');
 const assignStaff = document.getElementById('assignStaff');
 const assignPriority = document.getElementById('assignPriority');
 const assignNotes = document.getElementById('assignNotes');
+
 const complaintsTableBody = document.getElementById('complaintsTableBody');
 const emptyState = document.getElementById('emptyState');
 const searchInput = document.getElementById('searchInput');
@@ -41,6 +44,9 @@ const saveDepartmentBtn = document.getElementById('saveDepartmentBtn');
 const saveStaffBtn = document.getElementById('saveStaffBtn');
 const cancelDepartmentBtn = document.getElementById('cancelDepartmentBtn');
 const cancelStaffBtn = document.getElementById('cancelStaffBtn');
+const refreshFeedbackBtn = document.getElementById('refreshFeedbackBtn');
+const feedbackTableBody = document.getElementById('feedbackTableBody');
+let feedbackData = [];
 
 // Global variables
 let allComplaints = [];
@@ -105,7 +111,7 @@ function checkAdminLogin() {
     // TEMPORARY FIX: If we have email but no ID, create a temporary ID
     if (user.email) {
       console.warn('User has email but no ID, creating temporary session...');
-      user.id = Date.now(); // Use timestamp as temporary ID
+      user.user_id = Date.now(); // Use timestamp as temporary ID
       sessionStorage.setItem('user', JSON.stringify(user));
       console.log('Added temporary ID to user:', user);
     } else {
@@ -140,6 +146,8 @@ function showAdminLoginError(message) {
 }
 
 // Initialize admin dashboard
+// admin_dashboard.js
+
 async function initAdminDashboard() {
   console.log('=== INITIALIZING ADMIN DASHBOARD ===');
   
@@ -160,160 +168,161 @@ async function initAdminDashboard() {
   
   if (userElement) {
     userElement.textContent = username;
-    console.log('Set admin username element to:', username);
   }
   if (welcomeElement) {
     const firstName = username.split(' ')[0];
     welcomeElement.textContent = firstName;
-    console.log('Set admin welcome element to:', firstName);
   }
   
   // Make currentUser globally accessible for debugging
   window.currentUser = currentUser;
-  window.allComplaints = allComplaints;
   
-  console.log('🔍 Debug info available in window.currentUser and window.allComplaints');
-  
-  // Load all data
+  // Load all data from the server in the correct order
   console.log('Loading admin dashboard data...');
   await loadAllComplaints();
-  loadStaffMembers();
+  await loadStaffMembers();
+  await loadReportsData();
+  await loadFeedbackData();
+  await fetchAndPopulateDepartments();
+  await loadDashboardStats();
+  
   loadSystemLogs();
   
-  // Update dashboard
-  updateDashboardStats();
+  // Now that all data is loaded, render everything
+  console.log('All data loaded, rendering UI...');
   renderComplaintsTable();
   renderStaffList();
   renderSystemLogs();
-  initializeCharts();
+  
+  // IMPORTANT: Initialize charts AFTER data is loaded
+  setTimeout(() => {
+    initializeCharts();
+  }, 500);
+  
   updateNotificationBadge();
   
   console.log('✅ Admin dashboard initialization complete');
 }
 
-// Generate mock complaints data
-function generateMockComplaints() {
-  const mockComplaints = [
-    {
-      id: 1001,
-      title: 'Water pipe burst on Main Street',
-      description: 'Large water pipe has burst causing flooding on Main Street near the shopping center.',
-      citizenName: 'Sarah Johnson',
-      citizenEmail: 'sarah.j@email.com',
-      reportedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: 'Pending',
-      department: null,
-      assignedStaff: null,
-      priority: null,
-      location: 'Main Street, Downtown',
-      zone: 'Central',
-      ward: 'Ward 1',
-      areaName: 'City Center',
-      problemType: 'Water Leak'
-    },
-    {
-      id: 1002,
-      title: 'Pothole causing vehicle damage',
-      description: 'Deep pothole on Oak Avenue is causing damage to vehicles. Multiple complaints received.',
-      citizenName: 'Mike Chen',
-      citizenEmail: 'mike.chen@email.com',
-      reportedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'In Progress',
-      department: 'Road Maintenance',
-      assignedStaff: 'John Smith',
-      priority: 'Medium',
-      location: 'Oak Avenue, Block 200',
-      zone: 'North',
-      ward: 'Ward 2',
-      areaName: 'Residential Area A',
-      problemType: 'Pothole'
-    },
-    {
-      id: 1003,
-      title: 'Street light not working',
-      description: 'Street light at Park Road intersection has been out for several days.',
-      citizenName: 'Lisa Wang',
-      citizenEmail: 'lisa.wang@email.com',
-      reportedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: 'Pending',
-      department: null,
-      assignedStaff: null,
-      priority: null,
-      location: 'Park Road Intersection',
-      zone: 'South',
-      ward: 'Ward 1',
-      areaName: 'Market Area',
-      problemType: 'Street Light'
-    },
-    {
-      id: 1004,
-      title: 'Water quality issue reported',
-      description: 'Citizens reporting unusual taste and color in water supply in residential area.',
-      citizenName: 'David Park',
-      citizenEmail: 'david.park@email.com',
-      reportedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      status: 'Resolved',
-      department: 'Water Management',
-      assignedStaff: 'Maria Garcia',
-      priority: 'High',
-      location: 'Green Park Colony',
-      zone: 'West',
-      ward: 'Ward 3',
-      areaName: 'Green Park',
-      problemType: 'Water Quality'
-    },
-    {
-      id: 1005,
-      title: 'Traffic signal malfunction',
-      description: 'Traffic signal at busy intersection is not working properly, causing traffic issues.',
-      citizenName: 'Emily Rodriguez',
-      citizenEmail: 'emily.r@email.com',
-      reportedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-      status: 'In Progress',
-      department: 'Electrical',
-      assignedStaff: 'Robert Johnson',
-      priority: 'High',
-      location: '5th Street & Market',
-      zone: 'Central',
-      ward: 'Ward 2',
-      areaName: 'Financial District',
-      problemType: 'Traffic Signal'
-    },
-    {
-      id: 1006,
-      title: 'Garbage collection missed',
-      description: 'Garbage has not been collected for the past week in residential area.',
-      citizenName: 'Tom Wilson',
-      citizenEmail: 'tom.wilson@email.com',
-      reportedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-      status: 'Pending',
-      department: null,
-      assignedStaff: null,
-      priority: null,
-      location: 'Sunset Avenue',
-      zone: 'East',
-      ward: 'Ward 4',
-      areaName: 'Residential Complex',
-      problemType: 'Sanitation'
-    }
-  ];
+// Enhanced Trends Chart with Real Data
+function initializeTrendsChart() {
+  const ctx = document.getElementById('trendsChart');
+  if (!ctx) return;
   
-  return mockComplaints;
+  // If chart already exists, destroy it first
+  if (trendsChart) {
+    trendsChart.destroy();
+  }
+  
+  // Generate trend data from actual complaints
+  const last7Days = [];
+  const complaintsPerDay = [];
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    last7Days.push(dateStr);
+    
+    // Count complaints for this day
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    const complaintsOnDay = allComplaints.filter(complaint => {
+      const complaintDate = new Date(complaint.reportedAt);
+      return complaintDate >= dayStart && complaintDate <= dayEnd;
+    }).length;
+    
+    complaintsPerDay.push(complaintsOnDay);
+  }
+  
+  trendsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: last7Days,
+      datasets: [{
+        label: 'New Complaints',
+        data: complaintsPerDay,
+        borderColor: '#7c3aed',
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#7c3aed',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          display: true,
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            precision: 0
+          },
+          grid: {
+            borderDash: [5, 5]
+          }
+        }
+      },
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+  
+  console.log('Trends chart initialized with data:', complaintsPerDay);
 }
 
 // Load all complaints
 async function loadAllComplaints() {
   try {
-    console.log('Loading all complaints for admin from /api/complaints');
-    const response = await fetch('/api/complaints');
+    console.log('Loading all complaints for admin from /api/admin/complaints');
+    const response = await fetch('/api/admin/complaints');
     if (!response.ok) {
       throw new Error('Failed to fetch complaints: ' + response.status);
     }
     allComplaints = await response.json();
     console.log('Loaded', allComplaints.length, 'complaints for admin dashboard');
+    console.log('First complaint data structure:', allComplaints[0]);
+    
   } catch (error) {
     console.error('Error loading complaints:', error);
+    // Don't fall back to mock data
     allComplaints = [];
+    alert('Failed to load complaints. Please check console for details.');
   }
 }
 
@@ -360,10 +369,40 @@ function generateMockStaff() {
 }
 
 // Load staff members
-function loadStaffMembers() {
-  staffMembers = generateMockStaff();
-  console.log('Loaded', staffMembers.length, 'staff members');
+async function loadStaffMembers() {
+  try {
+    console.log('Loading staff members from /api/admin/staff');
+    const response = await fetch('/api/admin/staff');
+    if (!response.ok) {
+      throw new Error('Failed to fetch staff: ' + response.status);
+    }
+    
+    const data = await response.json();
+    console.log('Loaded raw staff data:', data);
+    
+    // Map the received data to our expected format
+    staffMembers = data.map(staff => ({
+      id: staff.id,
+      name: staff.name,
+      email: staff.email,
+      phone: staff.phone,
+      department: staff.department,
+      status: staff.status,
+      active_assignments: staff.active_assignments || 0,
+      performance: staff.performance || 5.0
+    }));
+    
+    console.log('Processed', staffMembers.length, 'staff members from database');
+    
+  } catch (error) {
+    console.error('Error loading staff members:', error);
+    // Don't fallback to mock data in production
+    staffMembers = [];
+    alert('Error loading staff members. Please refresh the page to try again.');
+  }
 }
+
+// Load system logs
 
 // Load system logs
 function loadSystemLogs() {
@@ -396,6 +435,210 @@ function loadSystemLogs() {
     }
   ];
 }
+
+
+async function loadReportsData() {
+    try {
+        console.log('=== LOADING REPORTS DATA ===');
+        
+        const response = await fetch('/api/admin/reports/dashboard');
+        if (!response.ok) {
+            throw new Error('Failed to fetch reports data: ' + response.status);
+        }
+        
+        const data = await response.json();
+        console.log('Reports data loaded:', data);
+        
+        // Render both reports
+        renderComplaintSummaryReport(data.complaintSummary);
+        renderStaffPerformanceReport(data.staffPerformance);
+        
+    } catch (error) {
+        console.error('Error loading reports data:', error);
+        showReportsError('Failed to load reports data. Please try again.');
+    }
+}
+
+// Load feedback data for admin
+async function loadFeedbackData() {
+    try {
+        console.log('=== LOADING FEEDBACK DATA ===');
+        
+        const response = await fetch('/api/admin/feedback');
+        if (!response.ok) {
+            throw new Error('Failed to fetch feedback data: ' + response.status);
+        }
+        
+        feedbackData = await response.json();
+        console.log('Feedback data loaded:', feedbackData);
+        
+        renderFeedbackTable();
+        
+    } catch (error) {
+        console.error('Error loading feedback data:', error);
+        showFeedbackError('Failed to load feedback data. Please try again.');
+    }
+}
+
+// Render feedback table
+function renderFeedbackTable() {
+    if (!feedbackTableBody || !feedbackData || feedbackData.length === 0) {
+        if (feedbackTableBody) {
+            feedbackTableBody.innerHTML = '<tr><td colspan="5" class="no-data">No feedback submitted yet</td></tr>';
+        }
+        return;
+    }
+    
+    feedbackTableBody.innerHTML = feedbackData.map(feedback => {
+        const stars = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
+        
+        return `
+            <tr>
+                <td>
+                    <div class="complaint-info">
+                        <strong>#${feedback.complaint_id}</strong>
+                        <span class="complaint-title">${feedback.complaint_title}</span>
+                        <span class="status-badge ${feedback.complaint_status.toLowerCase().replace(' ', '-')}">${feedback.complaint_status}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="citizen-info">
+                        <strong>${feedback.citizen_name}</strong>
+                        <small>${feedback.citizen_email}</small>
+                    </div>
+                </td>
+                <td>
+                    <div class="rating-display">
+                        <span class="stars">${stars}</span>
+                        <span class="rating-number">(${feedback.rating}/5)</span>
+                    </div>
+                </td>
+                <td class="feedback-comment">${feedback.comment}</td>
+                <td class="feedback-date">${formatDate(feedback.created_at)}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('Feedback table rendered with', feedbackData.length, 'entries');
+}
+
+// Show error message for feedback
+function showFeedbackError(message) {
+    if (feedbackTableBody) {
+        feedbackTableBody.innerHTML = `<tr><td colspan="5" class="error">${message}</td></tr>`;
+    }
+}
+
+// Render complaint summary report table
+function renderComplaintSummaryReport(data) {
+    const tbody = document.getElementById('complaintSummaryBody');
+    if (!tbody || !data || data.length === 0) {
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="4" class="no-data">No complaint summary data available</td></tr>';
+        }
+        return;
+    }
+    
+    tbody.innerHTML = data.map(item => {
+        const avgDays = item.avg_resolution_days ? `${item.avg_resolution_days} days` : 'N/A';
+        const dateRange = item.earliest_complaint && item.latest_complaint 
+            ? `${formatDate(item.earliest_complaint)} - ${formatDate(item.latest_complaint)}`
+            : 'N/A';
+            
+        return `
+            <tr>
+                <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status}</span></td>
+                <td><strong>${item.complaint_count}</strong></td>
+                <td>${avgDays}</td>
+                <td class="date-range">${dateRange}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('Complaint summary report rendered with', data.length, 'rows');
+}
+
+// Render staff performance report table
+function renderStaffPerformanceReport(data) {
+    const tbody = document.getElementById('staffPerformanceBody');
+    if (!tbody || !data || data.length === 0) {
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data">No staff performance data available</td></tr>';
+        }
+        return;
+    }
+    
+    tbody.innerHTML = data.map(staff => {
+        const avgTime = staff.avg_resolution_time ? `${staff.avg_resolution_time} days` : 'N/A';
+        const efficiency = staff.total_assigned > 0 
+            ? Math.round((staff.resolved_cases / staff.total_assigned) * 100) 
+            : 0;
+            
+        return `
+            <tr>
+                <td>
+                    <div class="staff-info">
+                        <strong>${staff.staff_name}</strong>
+                        <small>${staff.staff_email}</small>
+                    </div>
+                </td>
+                <td><span class="department-tag">${staff.department || 'N/A'}</span></td>
+                <td><span class="active-cases">${staff.active_cases}</span></td>
+                <td><span class="resolved-cases">${staff.resolved_cases}</span></td>
+                <td><strong>${staff.total_assigned}</strong></td>
+                <td>
+                    <div class="performance-info">
+                        <span class="avg-time">${avgTime}</span>
+                        <span class="efficiency-rate">${efficiency}% efficiency</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('Staff performance report rendered with', data.length, 'rows');
+}
+
+// Format date for display
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+// Show error message for reports
+function showReportsError(message) {
+    const summaryBody = document.getElementById('complaintSummaryBody');
+    const performanceBody = document.getElementById('staffPerformanceBody');
+    
+    if (summaryBody) {
+        summaryBody.innerHTML = `<tr><td colspan="4" class="error">${message}</td></tr>`;
+    }
+    if (performanceBody) {
+        performanceBody.innerHTML = `<tr><td colspan="6" class="error">${message}</td></tr>`;
+    }
+}
+
+// Refresh reports data
+async function refreshReports() {
+    const refreshBtn = document.getElementById('refreshReportsBtn');
+    if (refreshBtn) {
+        const originalText = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshBtn.disabled = true;
+    }
+    
+    await loadReportsData();
+    
+    if (refreshBtn) {
+        refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Reports';
+        refreshBtn.disabled = false;
+    }
+}
+
 
 // Update dashboard statistics
 function updateDashboardStats() {
@@ -432,6 +675,38 @@ function updateNotificationBadge() {
     notificationBadge.style.display = pendingCount > 0 ? 'flex' : 'none';
   }
 }
+
+async function fetchAndPopulateDepartments() {
+  console.log('Fetching departments from DB...');
+  try {
+    const response = await fetch('/api/admin/departments');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const departments = await response.json();
+    const staffDepartmentSelect = document.getElementById('staffDepartment');
+
+    // Clear existing options, keeping the first "Select department" option
+    while (staffDepartmentSelect.options.length > 1) {
+      staffDepartmentSelect.remove(1);
+    }
+
+    // Populate with departments from the database
+    departments.forEach(dept => {
+      const option = document.createElement('option');
+      option.value = dept.name;
+      option.textContent = dept.name;
+      staffDepartmentSelect.appendChild(option);
+    });
+
+    console.log('Departments populated successfully.');
+
+  } catch (error) {
+    console.error('Failed to fetch departments:', error);
+  }
+}
+
+
 
 // Render complaints table
 function renderComplaintsTable() {
@@ -475,21 +750,21 @@ function renderComplaintsTable() {
   }
   
   complaintsTableBody.innerHTML = filteredComplaints.map(complaint => `
-    <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
-      <td>#${complaint.id}</td>
-      <td><strong>${complaint.title}</strong></td>
-      <td>${complaint.citizenName}</td>
-      <td>${complaint.department || 'Not Assigned'}</td>
-      <td>${complaint.assignedStaff || 'Not Assigned'}</td>
-      <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
-      <td>${formatDateTime(complaint.reportedAt)}</td>
-      <td>
-        <button class="assign-btn" onclick="event.stopPropagation(); openAssignmentForm(${complaint.id})" ${complaint.status === 'Resolved' ? 'disabled' : ''}>
-          <i class="fas fa-user-tag"></i> ${complaint.status === 'Pending' ? 'Assign' : 'Reassign'}
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
+    <td>#${complaint.id}</td>
+    <td><strong>${complaint.title}</strong></td>
+    <td>${complaint.citizenName}</td>
+    <td>${complaint.department || 'Not Assigned'}</td>
+    <td>${complaint.assignedStaff || 'Not Assigned'}</td>
+    <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
+    <td>${formatDateTime(complaint.reportedAt)}</td>
+    <td>
+      <button class="assign-btn" onclick="event.stopPropagation(); openAssignmentForm(${complaint.id})" ${complaint.status === 'Resolved' ? 'disabled' : ''}>
+        <i class="fas fa-user-tag"></i> ${complaint.status === 'Pending' ? 'Assign' : 'Reassign'}
+      </button>
+    </td>
+  </tr>
+`).join('');
   
   console.log('Admin complaints table rendered successfully');
 }
@@ -565,44 +840,107 @@ function formatDateTime(dateString) {
 }
 
 // Open assignment form
-function openAssignmentForm(complaintId) {
-  const complaint = allComplaints.find(c => c.id === complaintId);
-  if (!complaint) return;
-  
-  selectedComplaintId = complaintId;
-  
-  // Update selected complaint info
-  if (selectedComplaintInfo) {
-    selectedComplaintInfo.innerHTML = `
-      <h4>Complaint #${complaint.id}</h4>
-      <p><strong>${complaint.title}</strong></p>
-      <p>Reported by: ${complaint.citizenName}</p>
-      <p>Location: ${complaint.location}</p>
-      <p>Current Status: <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
-    `;
+async function openAssignmentForm(complaintId) {
+  try {
+    const complaint = allComplaints.find(c => c.id === complaintId || c.complaint_id === complaintId);
+    if (!complaint) {
+      console.error('Complaint not found with ID:', complaintId);
+      return;
+    }
+    
+    selectedComplaintId = complaint.id || complaint.complaint_id;
+    
+    if (selectedComplaintInfo) {
+      selectedComplaintInfo.innerHTML = `
+        <h4>Complaint #${selectedComplaintId}</h4>
+        <p><strong>${complaint.title}</strong></p>
+        <p>Reported by: ${complaint.citizenName || 'Unknown'}</p>
+        <p>Location: ${complaint.location || 'Unknown location'}</p>
+        <p>Current Status: <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
+      `;
+    }
+    
+    // Fetch departments and staff from the server
+    const [deptResponse, staffResponse] = await Promise.all([
+        fetch('/api/admin/departments'),
+        fetch('/api/admin/staff')
+    ]);
+
+    if (!deptResponse.ok) throw new Error('Failed to fetch departments');
+    if (!staffResponse.ok) throw new Error('Failed to fetch staff');
+
+    const departments = await deptResponse.json();
+    const staffMembers = await staffResponse.json();
+    
+    // Clear and populate department dropdown from the database
+    if (assignDepartment) {
+      assignDepartment.innerHTML = '<option value="">Select Department</option>';
+      departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.name;
+        option.textContent = dept.name;
+        assignDepartment.appendChild(option);
+      });
+    }
+    
+    // Store staff members globally for the dropdown update function
+    window.availableStaff = staffMembers;
+    
+    // Set up staff dropdown with CONSISTENT workload logic (matching your trigger limit of 3)
+    if (assignStaff) {
+      assignStaff.innerHTML = '<option value="">Select Staff Member</option>';
+      staffMembers.forEach(staff => {
+          const option = document.createElement('option');
+          option.value = staff.name;
+          
+          // FIXED: Use 3 as limit to match your MySQL trigger
+          const activeCases = staff.active_assignments || 0;
+          const maxCapacity = 3; // Match your trigger limit
+          
+          let displayText = `${staff.name} (${activeCases}/${maxCapacity} active)`;
+          let warningText = '';
+          
+          if (activeCases >= maxCapacity) {
+              warningText = ' 🔴 AT LIMIT';
+              option.disabled = true;
+              option.style.color = '#ef4444';
+              option.style.fontWeight = 'bold';
+          } else if (activeCases >= maxCapacity - 1) {
+              warningText = ' ⚠️ NEAR LIMIT';
+              option.style.color = '#f59e0b';
+              option.style.fontWeight = '600';
+          }
+          
+          option.textContent = displayText + warningText;
+          assignStaff.appendChild(option);
+      });
+    }
+    
+    // Pre-fill form if already assigned
+    if (complaint.department && assignDepartment) assignDepartment.value = complaint.department;
+    if (complaint.assignedStaff && assignStaff) assignStaff.value = complaint.assignedStaff;
+    
+    // Set up priority options
+    if (assignPriority) {
+        assignPriority.innerHTML = `
+            <option value="">Select Priority</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+        `;
+        if (complaint.priority) assignPriority.value = complaint.priority;
+    }
+    
+    // Show form
+    if (assignmentFormContainer) assignmentFormContainer.classList.add('show');
+    if (assignDepartment) assignDepartment.focus();
+    
+  } catch (error) {
+    console.error('Error opening assignment form:', error);
+    alert('Error loading assignment data. Please try again.');
   }
-  
-  // Update staff dropdown based on department
-  updateStaffDropdown();
-  
-  // Pre-fill form if already assigned
-  if (complaint.department && assignDepartment) {
-    assignDepartment.value = complaint.department;
-    updateStaffDropdown();
-  }
-  if (complaint.assignedStaff && assignStaff) {
-    assignStaff.value = complaint.assignedStaff;
-  }
-  if (complaint.priority && assignPriority) {
-    assignPriority.value = complaint.priority;
-  }
-  
-  // Show form
-  if (assignmentFormContainer) {
-    assignmentFormContainer.classList.add('show');
-  }
-  if (assignDepartment) assignDepartment.focus();
 }
+
 
 // Close assignment form
 function closeAssignmentForm() {
@@ -615,23 +953,48 @@ function closeAssignmentForm() {
 }
 
 // Update staff dropdown based on selected department
-function updateStaffDropdown() {
+async function updateStaffDropdown() {
   if (!assignStaff || !assignDepartment) return;
   
-  const selectedDepartment = assignDepartment.value;
-  const departmentStaff = staffMembers.filter(staff => 
-    staff.department === selectedDepartment
-  );
-  
-  assignStaff.innerHTML = '<option value="">Select staff member</option>';
-  departmentStaff.forEach(staff => {
+  try {
+    const selectedDepartment = assignDepartment.value;
+    
+    // Clear and set default option
+    assignStaff.innerHTML = '<option value="">Select staff member</option>';
+    
+    // If no department is selected, do nothing further
+    if (!selectedDepartment) return;
+    
+    // --- FIX IS HERE ---
+    // The original code tried to filter staff, but the API doesn't provide
+    // department info for each staff member. This new code simply shows all staff.
+    // In the future, you can update the GET /api/admin/staff endpoint and
+    // re-add the filtering logic here.
+    
+    if (window.availableStaff && window.availableStaff.length > 0) {
+        window.availableStaff.forEach(staff => {
+            const option = document.createElement('option');
+            option.value = staff.name;
+            // Display active cases to help the admin choose
+            const activeCases = staff.active_assignments || 0;
+            option.textContent = `${staff.name} (${activeCases} active cases)`;
+            assignStaff.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'No staff members found';
+        assignStaff.appendChild(option);
+    }
+    
+  } catch (error) {
+    console.error('Error updating staff dropdown:', error);
     const option = document.createElement('option');
-    option.value = staff.name;
-    option.textContent = `${staff.name} (${staff.status})`;
+    option.disabled = true;
+    option.textContent = 'Error loading staff members';
     assignStaff.appendChild(option);
-  });
+  }
 }
-
 // Clear form errors
 function clearAssignmentFormErrors() {
   document.querySelectorAll('.error-message').forEach(el => {
@@ -677,69 +1040,265 @@ async function handleAssignmentSubmit(e) {
   
   if (!validateAssignmentForm() || !selectedComplaintId) return;
   
-  // Show loading state
-  const assignBtn = assignmentForm.querySelector('button[type="submit"]');
-  const assignBtnText = document.getElementById('assignBtnText');
-  const assignSpinner = document.getElementById('assignSpinner');
-  
-  if (assignBtn) assignBtn.disabled = true;
-  if (assignBtnText) assignBtnText.textContent = 'Assigning...';
-  if (assignSpinner) assignSpinner.style.display = 'inline-block';
-  
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Show loading state
+    const assignBtn = assignmentForm.querySelector('button[type="submit"]');
+    const assignBtnText = document.getElementById('assignBtnText');
+    const assignSpinner = document.getElementById('assignSpinner');
     
-    // Find and update the complaint
-    const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId);
-    if (complaintIndex !== -1) {
-      const complaint = allComplaints[complaintIndex];
-      const wasNewAssignment = complaint.status === 'Pending';
+    if (assignBtn) assignBtn.disabled = true;
+    if (assignBtnText) assignBtnText.textContent = 'Assigning...';
+    if (assignSpinner) assignSpinner.style.display = 'inline-block';
+    
+    // Send assignment request to admin endpoint
+    const response = await fetch(`/api/admin/complaints/${selectedComplaintId}/assign`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        department: assignDepartment.value,
+        assignedStaff: assignStaff.value,
+        priority: assignPriority.value,
+        notes: assignNotes.value
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
       
-      allComplaints[complaintIndex].department = assignDepartment.value;
-      allComplaints[complaintIndex].assignedStaff = assignStaff.value;
-      allComplaints[complaintIndex].priority = assignPriority.value;
-      allComplaints[complaintIndex].status = 'In Progress';
-      allComplaints[complaintIndex].assignedAt = new Date().toISOString();
+      // Enhanced workload error handling
+      if (errorData.workloadExceeded) {
+        showWorkloadExceededModal(errorData);
+        return; // Don't close the form, let user try again
+      }
       
+      throw new Error(errorData.error || 'Failed to assign complaint');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update local data
+      const complaintIndex = allComplaints.findIndex(c => c.id === selectedComplaintId || c.complaint_id === selectedComplaintId);
+      if (complaintIndex !== -1) {
+        allComplaints[complaintIndex].department = assignDepartment.value;
+        allComplaints[complaintIndex].assignedStaff = assignStaff.value;
+        allComplaints[complaintIndex].priority = assignPriority.value;
+        allComplaints[complaintIndex].status = 'In Progress';
+      }
+
       // Add to system logs
       const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
-      const actionText = wasNewAssignment ? 'assigned' : 'reassigned';
       systemLogs.unshift({
         id: Date.now(),
         timestamp: new Date(),
-        action: `${adminName} ${actionText} complaint #${selectedComplaintId} to ${assignStaff.value}`,
+        action: `${adminName} assigned complaint #${selectedComplaintId} to ${assignStaff.value}`,
         type: 'success'
       });
+
+      // Refresh data and UI
+      await loadAllComplaints();
+      await loadDashboardStats();
+      renderComplaintsTable();
+      renderSystemLogs();
+      updateNotificationBadge();
+      
+      // IMPORTANT: Re-initialize the chart with new data
+      initializeDepartmentChart();
+      
+      // Show success message
+      showSuccessMessage(`✅ Assignment Successful!\n\nComplaint #${selectedComplaintId} has been assigned to ${assignStaff.value}`);
+      closeAssignmentForm();
+    } else {
+      throw new Error(result.error || 'Failed to assign complaint');
     }
-    
-    // Update UI
-    updateDashboardStats();
-    renderComplaintsTable();
-    renderSystemLogs();
-    updateNotificationBadge();
-    
-    // Close form and show success
-    closeAssignmentForm();
-    alert(`Complaint #${selectedComplaintId} has been assigned successfully!`);
     
   } catch (error) {
     console.error('Error assigning complaint:', error);
-    alert('Error assigning complaint. Please try again.');
+    showErrorMessage('Assignment Failed', error.message);
   } finally {
     // Reset button state
+    const assignBtn = assignmentForm.querySelector('button[type="submit"]');
+    const assignBtnText = document.getElementById('assignBtnText');
+    const assignSpinner = document.getElementById('assignSpinner');
+    
     if (assignBtn) assignBtn.disabled = false;
     if (assignBtnText) assignBtnText.textContent = 'Assign Complaint';
     if (assignSpinner) assignSpinner.style.display = 'none';
   }
 }
 
-// View complaint details in modal
-function viewComplaintDetails(id) {
-  const complaint = allComplaints.find(c => c.id === id);
-  if (!complaint) return;
+// Enhanced modal for workload exceeded
+function showWorkloadExceededModal(errorData) {
+  const modal = document.createElement('div');
+  modal.className = 'workload-modal-overlay';
+  modal.innerHTML = `
+    <div class="workload-modal">
+      <div class="workload-modal-header">
+        <h3>⚠️ Assignment Blocked</h3>
+        <button class="close-workload-modal">&times;</button>
+      </div>
+      <div class="workload-modal-body">
+        <div class="workload-alert">
+          <p><strong>${errorData.details.staffName}</strong> has reached maximum capacity!</p>
+          <div class="workload-stats">
+            <div class="stat">
+              <span class="label">Current Active Cases:</span>
+              <span class="value">${errorData.details.currentWorkload || 'At limit'}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Maximum Allowed:</span>
+              <span class="value">${errorData.details.maxCapacity || 3}</span>
+            </div>
+          </div>
+          <div class="workload-info">
+            <p><strong>🔄 Database Trigger Active:</strong> Your MySQL trigger prevents staff from getting more than ${errorData.details.maxCapacity || 3} active assignments to ensure quality service.</p>
+          </div>
+          <div class="suggestions">
+            <h4>💡 Suggestions:</h4>
+            <ul>
+              <li>Choose a different staff member with lower workload</li>
+              <li>Wait for ${errorData.details.staffName} to resolve some cases</li>
+              <li>Check staff workload in the Staff Management section</li>
+              <li>Consider increasing staff capacity if needed</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="workload-modal-footer">
+        <button class="btn-select-different">Select Different Staff</button>
+        <button class="btn-close-modal">Close</button>
+      </div>
+    </div>
+  `;
   
-  if (modalTitle) modalTitle.textContent = `Complaint #${complaint.id}`;
+  document.body.appendChild(modal);
+  
+  // Event listeners
+  modal.querySelector('.close-workload-modal').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+  
+  modal.querySelector('.btn-close-modal').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+  
+  modal.querySelector('.btn-select-different').addEventListener('click', () => {
+    document.body.removeChild(modal);
+    // Focus on staff dropdown to help user select different staff
+    if (assignStaff) {
+      assignStaff.focus();
+      assignStaff.style.borderColor = '#3b82f6';
+      assignStaff.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+      
+      // Reset styling after 3 seconds
+      setTimeout(() => {
+        assignStaff.style.borderColor = '';
+        assignStaff.style.boxShadow = '';
+      }, 3000);
+    }
+  });
+  
+  // Click outside to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  });
+}
+
+
+// Enhanced success message
+function showSuccessMessage(message) {
+  const successDiv = document.createElement('div');
+  successDiv.className = 'success-notification';
+  successDiv.innerHTML = `
+    <div class="success-content">
+      <i class="fas fa-check-circle"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(successDiv);
+  
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    if (document.body.contains(successDiv)) {
+      document.body.removeChild(successDiv);
+    }
+  }, 4000);
+}
+
+// Enhanced error message
+function showErrorMessage(title, message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-notification';
+  errorDiv.innerHTML = `
+    <div class="error-content">
+      <i class="fas fa-exclamation-triangle"></i>
+      <div>
+        <strong>${title}</strong>
+        <p>${message}</p>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(errorDiv);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (document.body.contains(errorDiv)) {
+      document.body.removeChild(errorDiv);
+    }
+  }, 5000);
+}
+
+// Add this function to fetch stats from your admin endpoint
+async function loadDashboardStats() {
+  try {
+    console.log('Loading dashboard stats from /api/admin/stats');
+    const response = await fetch('/api/admin/stats');
+    if (!response.ok) {
+      throw new Error('Failed to fetch stats: ' + response.status);
+    }
+    const stats = await response.json();
+    console.log('Loaded dashboard stats:', stats);
+    
+    // Update DOM elements
+    const totalElement = document.getElementById('totalComplaints');
+    const pendingElement = document.getElementById('pendingComplaints');
+    const inProgressElement = document.getElementById('inProgressComplaints');
+    const resolvedElement = document.getElementById('resolvedComplaints');
+    const resolutionRateElement = document.getElementById('resolutionRate');
+    const resolutionProgressElement = document.getElementById('resolutionProgress');
+    
+    if (totalElement) totalElement.textContent = stats.total;
+    if (pendingElement) pendingElement.textContent = stats.pending;
+    if (inProgressElement) inProgressElement.textContent = stats.inProgress;
+    if (resolvedElement) resolvedElement.textContent = stats.resolved;
+    if (resolutionRateElement) resolutionRateElement.textContent = `${stats.resolutionRate}%`;
+    if (resolutionProgressElement) resolutionProgressElement.style.width = `${stats.resolutionRate}%`;
+    
+  } catch (error) {
+    console.error('Error loading dashboard stats:', error);
+    // Fallback to calculating from allComplaints
+    updateDashboardStats();
+  }
+}
+
+
+
+// View complaint details in modal
+function viewComplaintDetails(complaintId) {
+  // Find complaint - try both id and complaint_id fields
+  const complaint = allComplaints.find(c => c.id === complaintId || c.complaint_id === complaintId);
+  if (!complaint) {
+    console.error('Complaint not found with ID:', complaintId);
+    return;
+  }
+  
+  if (modalTitle) modalTitle.textContent = `Complaint #${complaint.id || complaint.complaint_id}`;
   
   if (modalBody) {
     modalBody.innerHTML = `
@@ -759,35 +1318,39 @@ function viewComplaintDetails(id) {
       
       <div class="complaint-detail">
         <h4>Citizen Information</h4>
-        <p><strong>Name:</strong> ${complaint.citizenName}</p>
-        <p><strong>Email:</strong> ${complaint.citizenEmail}</p>
+        <p><strong>Name:</strong> ${complaint.citizenName || complaint.citizenName || 'Unknown'}</p>
+        <p><strong>Email:</strong> ${complaint.citizenEmail || complaint.citizen_email || 'Not provided'}</p>
       </div>
       
       <div class="complaint-detail">
         <h4>Location Details</h4>
-        <p><strong>Location:</strong> ${complaint.location}</p>
-        <p><strong>Ward:</strong> ${complaint.ward}</p>
-        <p><strong>Zone:</strong> ${complaint.zone}</p>
+        <p><strong>Location:</strong> ${complaint.location || 'Not specified'}</p>
+        <p><strong>Ward:</strong> ${complaint.ward || 'Not specified'}</p>
+        <p><strong>Zone:</strong> ${complaint.zone || 'Not specified'}</p>
+        <p><strong>Area:</strong> ${complaint.areaName || complaint.area_name || 'Not specified'}</p>
       </div>
       
       <div class="complaint-detail">
         <h4>Assignment Information</h4>
         <p><strong>Department:</strong> ${complaint.department || 'Not Assigned'}</p>
-        <p><strong>Assigned Staff:</strong> ${complaint.assignedStaff || 'Not Assigned'}</p>
+        <p><strong>Assigned Staff:</strong> ${complaint.assignedStaff || complaint.assigned_staff_name || 'Not Assigned'}</p>
         <p><strong>Priority:</strong> ${complaint.priority || 'Not Set'}</p>
       </div>
       
       <div class="complaint-detail">
         <h4>Timeline</h4>
-        <p><strong>Reported:</strong> ${formatDateTime(complaint.reportedAt)}</p>
-        ${complaint.assignedAt ? `<p><strong>Assigned:</strong> ${formatDateTime(complaint.assignedAt)}</p>` : ''}
+        <p><strong>Reported:</strong> ${formatDateTime(complaint.reportedAt || complaint.created_at)}</p>
+        ${complaint.assigned_at ? `<p><strong>Assigned:</strong> ${formatDateTime(complaint.assigned_at)}</p>` : ''}
+        ${complaint.updated_at && complaint.updated_at !== (complaint.reportedAt || complaint.created_at) ? 
+          `<p><strong>Last Updated:</strong> ${formatDateTime(complaint.updated_at)}</p>` : ''}
       </div>
     `;
   }
   
   // Store complaint ID for assign button
   if (assignFromModalBtn) {
-    assignFromModalBtn.setAttribute('data-complaint-id', id);
+    const actualComplaintId = complaint.id || complaint.complaint_id;
+    assignFromModalBtn.setAttribute('data-complaint-id', actualComplaintId);
     assignFromModalBtn.style.display = complaint.status === 'Resolved' ? 'none' : 'inline-block';
   }
   
@@ -809,39 +1372,77 @@ function initializeCharts() {
   initializeTrendsChart();
 }
 
+function generateDynamicColors(count) {
+  const predefinedColors = [
+    '#7c3aed', // Purple (Primary)
+    '#10b981', // Green (Success)  
+    '#f59e0b', // Amber (Warning)
+    '#ef4444', // Red (Danger)
+    '#3b82f6', // Blue
+    '#8b5cf6', // Violet
+    '#06b6d4', // Cyan
+    '#84cc16', // Lime
+    '#f97316', // Orange
+    '#ec4899', // Pink
+    '#6b7280', // Gray
+    '#14b8a6', // Teal
+  ];
+  
+  const colors = [];
+  
+  for (let i = 0; i < count; i++) {
+    if (i < predefinedColors.length) {
+      colors.push(predefinedColors[i]);
+    } else {
+      // Generate random colors if we exceed predefined ones
+      const hue = (i - predefinedColors.length) * 137.508; // Golden angle
+      colors.push(`hsl(${hue % 360}, 70%, 60%)`);
+    }
+  }
+  
+  return colors;
+}
+
 // Initialize department distribution chart
 function initializeDepartmentChart() {
   const ctx = document.getElementById('departmentChart');
   if (!ctx) return;
   
-  const departmentCounts = {
-    'Water Management': 0,
-    'Road Maintenance': 0,
-    'Electrical': 0,
-    'Sanitation': 0,
-    'Unassigned': 0
-  };
+  // If chart already exists, destroy it first
+  if (departmentChart) {
+    departmentChart.destroy();
+  }
+  
+  // Count complaints by department dynamically
+  const departmentCounts = {};
   
   allComplaints.forEach(complaint => {
     const dept = complaint.department || 'Unassigned';
-    if (departmentCounts.hasOwnProperty(dept)) {
-      departmentCounts[dept]++;
-    }
+    departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
   });
+  
+  // If no data, show placeholder
+  if (Object.keys(departmentCounts).length === 0) {
+    departmentCounts['No Data'] = 1;
+  }
+  
+  // Dynamic color generation based on actual departments
+  const departments = Object.keys(departmentCounts);
+  const colors = generateDynamicColors(departments.length);
+  
+  console.log('Department distribution:', departmentCounts);
+  console.log('Generated colors:', colors);
   
   departmentChart = new Chart(ctx, {
     type: 'pie',
     data: {
-      labels: Object.keys(departmentCounts),
+      labels: departments,
       datasets: [{
         data: Object.values(departmentCounts),
-        backgroundColor: [
-          '#7c3aed',
-          '#10b981',
-          '#f59e0b',
-          '#ef4444',
-          '#6b7280'
-        ]
+        backgroundColor: colors,
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        hoverOffset: 4
       }]
     },
     options: {
@@ -849,12 +1450,35 @@ function initializeDepartmentChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ${value} (${percentage}%)`;
+            }
+          }
         }
+      },
+      animation: {
+        animateRotate: true,
+        animateScale: true
       }
     }
   });
 }
+
 
 // Initialize trends chart
 function initializeTrendsChart() {
@@ -925,34 +1549,60 @@ function handleAddStaff() {
 }
 
 // Save department
-function saveDepartment() {
+// Save department
+async function saveDepartment() {
   const departmentName = document.getElementById('departmentName').value.trim();
   const departmentDescription = document.getElementById('departmentDescription').value.trim();
   
   if (!departmentName) {
-    alert('Department name is required');
+    showErrorModal('Validation Error', 'Department name is required');
     return;
   }
-  
-  // Add to system logs
-  const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
-  systemLogs.unshift({
-    id: Date.now(),
-    timestamp: new Date(),
-    action: `${adminName} added new department: ${departmentName}`,
-    type: 'success'
-  });
-  
-  // Update UI
-  renderSystemLogs();
-  
-  // Close modal
-  if (departmentModal) departmentModal.classList.remove('show');
-  if (departmentForm) departmentForm.reset();
-  
-  alert(`Department "${departmentName}" has been added successfully!`);
-}
 
+  try {
+    const response = await fetch('/api/admin/departments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: departmentName, description: departmentDescription }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save department');
+    }
+
+    const result = await response.json();
+    console.log('Server response:', result);
+
+    // Add to system logs
+    const adminName = currentUser ? (currentUser.name || currentUser.username || 'Admin') : 'Admin';
+    systemLogs.unshift({
+      id: Date.now(),
+      timestamp: new Date(),
+      action: `${adminName} added new department: ${departmentName}`,
+      type: 'success'
+    });
+    
+    // Update UI
+    renderSystemLogs();
+    
+    // Close modal and clear the form
+    if (departmentModal) departmentModal.classList.remove('show');
+    if (departmentForm) departmentForm.reset();
+    
+    // Show beautiful success modal instead of alert
+    showDepartmentSuccessModal(departmentName);
+    
+    // IMPORTANT: Refresh the department list in the "Add Staff" form
+    await fetchAndPopulateDepartments();
+
+  } catch (error) {
+      console.error('Error saving department:', error);
+      showErrorModal('Department Creation Failed', error.message);
+  }
+}
 // Save staff
 function saveStaff() {
   const staffName = document.getElementById('staffName').value.trim();
@@ -1010,6 +1660,129 @@ function viewAllComplaints() {
   if (complaintsTable) {
     complaintsTable.scrollIntoView({ behavior: 'smooth' });
   }
+}
+
+// Show department success modal
+function showDepartmentSuccessModal(departmentName) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'success-modal-overlay';
+    
+    modalOverlay.innerHTML = `
+        <div class="success-modal">
+            <div class="success-modal-header">
+                <button class="success-modal-close" onclick="closeDepartmentSuccessModal(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="success-modal-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="success-modal-title">Department Created Successfully!</h3>
+            </div>
+            <div class="success-modal-body">
+                <p class="success-modal-message">
+                    The department <strong>"${departmentName}"</strong> has been successfully added to the system. 
+                    You can now assign staff members to this department and manage urban issues more effectively.
+                </p>
+            </div>
+            <div class="success-modal-footer">
+                <button class="success-modal-btn" onclick="closeDepartmentSuccessModal(this)">
+                    <i class="fas fa-thumbs-up"></i> Great!
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalOverlay);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(modalOverlay)) {
+            closeDepartmentSuccessModal(modalOverlay);
+        }
+    }, 5000);
+    
+    // Click outside to close
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeDepartmentSuccessModal(modalOverlay);
+        }
+    });
+}
+
+// Close department success modal
+function closeDepartmentSuccessModal(element) {
+    const modalOverlay = element.closest ? element.closest('.success-modal-overlay') : element;
+    if (modalOverlay) {
+        modalOverlay.classList.add('fade-out');
+        setTimeout(() => {
+            if (document.body.contains(modalOverlay)) {
+                document.body.removeChild(modalOverlay);
+            }
+        }, 300);
+    }
+}
+
+// Show error modal
+function showErrorModal(title, message) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'success-modal-overlay';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10001;
+        animation: fadeIn 0.3s ease-out;
+    `;
+    
+    modalOverlay.innerHTML = `
+        <div class="success-modal" style="overflow: hidden;">
+            <div class="success-modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <button class="success-modal-close" onclick="closeErrorModal(this)" style="background: rgba(255, 255, 255, 0.2);">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="success-modal-icon" style="background: rgba(255, 255, 255, 0.2);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="success-modal-title">${title}</h3>
+            </div>
+            <div class="success-modal-body">
+                <p class="success-modal-message">${message}</p>
+            </div>
+            <div class="success-modal-footer">
+                <button class="success-modal-btn" onclick="closeErrorModal(this)" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalOverlay);
+    
+    // Click outside to close
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeErrorModal(modalOverlay);
+        }
+    });
+}
+
+// Close error modal
+function closeErrorModal(element) {
+    const modalOverlay = element.closest ? element.closest('.success-modal-overlay') : element;
+    if (modalOverlay) {
+        modalOverlay.classList.add('fade-out');
+        setTimeout(() => {
+            if (document.body.contains(modalOverlay)) {
+                document.body.removeChild(modalOverlay);
+            }
+        }, 300);
+    }
 }
 
 // Logout function
@@ -1093,6 +1866,27 @@ if (staffModal) {
   });
 }
 
+// Feedback refresh button
+if (refreshFeedbackBtn) {
+    refreshFeedbackBtn.addEventListener('click', async () => {
+        const originalText = refreshFeedbackBtn.innerHTML;
+        refreshFeedbackBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshFeedbackBtn.disabled = true;
+        
+        await loadFeedbackData();
+        
+        refreshFeedbackBtn.innerHTML = originalText;
+        refreshFeedbackBtn.disabled = false;
+    });
+}
+
+
+const refreshReportsBtn = document.getElementById('refreshReportsBtn');
+if (refreshReportsBtn) {
+    refreshReportsBtn.addEventListener('click', refreshReports);
+}
+
+
 // Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', initAdminDashboard);
 
@@ -1113,5 +1907,9 @@ window.renderComplaintsTable = renderComplaintsTable;
 window.checkAdminLogin = checkAdminLogin;
 window.viewComplaintDetails = viewComplaintDetails;
 window.openAssignmentForm = openAssignmentForm;
+window.showDepartmentSuccessModal = showDepartmentSuccessModal;
+window.closeDepartmentSuccessModal = closeDepartmentSuccessModal;
+window.showErrorModal = showErrorModal;
+window.closeErrorModal = closeErrorModal;
 
 console.log('Admin Dashboard loaded successfully');

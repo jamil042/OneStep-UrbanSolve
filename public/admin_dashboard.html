@@ -33,7 +33,6 @@
   </header>
 
   <main class="main-container">
-    <!-- Welcome Banner -->
     <section class="welcome-banner">
       <div class="welcome-content">
         <span class="welcome-emoji">👑</span>
@@ -46,7 +45,6 @@
       </div>
     </section>
 
-    <!-- Dashboard Stats -->
     <section class="dashboard-stats">
       <div class="stat-card">
         <div class="stat-content">
@@ -85,7 +83,6 @@
       </div>
     </section>
 
-    <!-- Quick Actions -->
     <section class="quick-actions">
       <button class="action-btn primary" id="addDepartmentBtn">
         <i class="fas fa-building"></i> Add Department
@@ -101,7 +98,6 @@
       </button>
     </section>
 
-    <!-- Analytics Section -->
     <section class="analytics-section">
       <div class="analytics-card">
         <div class="section-header">
@@ -121,7 +117,6 @@
       </div>
     </section>
 
-    <!-- Assignment Form -->
     <section class="assignment-form-container" id="assignmentFormContainer">
       <div class="assignment-form-card">
         <div class="form-header">
@@ -134,36 +129,32 @@
             <p>Select a complaint from the table below to assign it to staff.</p>
           </div>
 
-          <div class="form-group">
-            <label for="assignDepartment">Department *</label>
-            <select id="assignDepartment" name="assignDepartment" required>
-              <option value="">Select department</option>
-              <option value="Water Management">Water Management</option>
-              <option value="Road Maintenance">Road Maintenance</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Sanitation">Sanitation</option>
+         <div class="form-group">
+            <label for="staffDepartment">Department *</label>
+            <select id="staffDepartment" name="staffDepartment" required>
+                <option value="">Select department</option>
             </select>
             <span class="error-message" id="departmentError"></span>
-          </div>
+        </div>
 
-          <div class="form-group">
+        <div class="form-group">
             <label for="assignStaff">Assign to Staff *</label>
             <select id="assignStaff" name="assignStaff" required>
-              <option value="">Select staff member</option>
+                <option value="">Select staff member</option>
             </select>
             <span class="error-message" id="staffError"></span>
-          </div>
+        </div>
 
-          <div class="form-group">
+        <div class="form-group">
             <label for="assignPriority">Priority *</label>
             <select id="assignPriority" name="assignPriority" required>
-              <option value="">Select priority</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
+                <option value="">Select priority</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
             </select>
             <span class="error-message" id="priorityError"></span>
-          </div>
+        </div>
 
           <div class="form-group">
             <label for="assignNotes">Assignment Notes</label>
@@ -181,71 +172,174 @@
       </div>
     </section>
 
-    <!-- Main Content -->
     <section class="main-content">
-      <!-- Recent Complaints -->
-      <div class="complaint-history">
-        <div class="section-header">
-          <h3><i class="fas fa-exclamation-triangle"></i> Recent Complaints</h3>
-          <div class="search-filter">
-            <div class="search-box">
-              <i class="fas fa-search"></i>
-              <input type="text" id="searchInput" placeholder="Search complaints...">
+        <div class="complaints-and-staff-grid">
+            <div class="complaint-history">
+                <div class="section-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Recent Complaints</h3>
+                <div class="search-filter">
+                    <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search complaints...">
+                    </div>
+                    <select id="statusFilter">
+                    <option value="all">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    </select>
+                    <select id="departmentFilter">
+                    <option value="all">All Departments</option>
+                    <option value="WATER">WATER</option>
+                    <option value="ROADS">ROADS</option>
+                    <option value="WASTE">WASTE</option>
+                    <option value="ELECTRICITY">ELECTRICITY</option>
+                    <option value="GENERAL">GENERAL</option>
+                    </select>
+                </div>
+                </div>
+                
+                <div class="table-container">
+                <table id="complaintsTable">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Citizen</th>
+                        <th>Department</th>
+                        <th>Staff</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="complaintsTableBody">
+                    </tbody>
+                </table>
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>No complaints found.</p>
+                </div>
+                </div>
             </div>
-            <select id="statusFilter">
-              <option value="all">All Status</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-            </select>
-            <select id="departmentFilter">
-              <option value="all">All Departments</option>
-              <option value="Water Management">Water Management</option>
-              <option value="Road Maintenance">Road Maintenance</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Sanitation">Sanitation</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="table-container">
-          <table id="complaintsTable">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Title</th>
-                <th>Citizen</th>
-                <th>Department</th>
-                <th>Staff</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="complaintsTableBody">
-              <!-- Complaints will be loaded here -->
-            </tbody>
-          </table>
-          <div class="empty-state" id="emptyState">
-            <i class="fas fa-clipboard-list"></i>
-            <p>No complaints found.</p>
-          </div>
-        </div>
-      </div>
 
-      <!-- Staff Management -->
-      <div class="staff-management">
-        <div class="section-header">
-          <h3><i class="fas fa-users"></i> Staff Management</h3>
-          <span class="badge" id="staffBadge">0 staff members</span>
+            <div class="staff-management">
+                <div class="section-header">
+                <h3><i class="fas fa-users"></i> Staff Management</h3>
+                <span class="badge" id="staffBadge">0 staff members</span>
+                </div>
+                <div class="staff-list" id="staffList">
+                </div>
+            </div>
         </div>
-        <div class="staff-list" id="staffList">
-          <!-- Staff will be loaded here -->
-        </div>
-      </div>
+
+        <section class="reports-section">
+            <div class="section-header">
+                <h3><i class="fas fa-chart-bar"></i> Database Views & Reports</h3>
+                <button class="action-btn secondary" id="refreshReportsBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh Reports
+                </button>
+            </div>
+            
+            <div class="reports-grid">
+                <div class="report-card">
+                    <div class="report-header">
+                        <h4><i class="fas fa-clipboard-list"></i> Complaint Summary (View)</h4>
+                        <span class="view-badge">SQL View</span>
+                    </div>
+                    <div class="report-content">
+                        <div class="table-container">
+                            <table id="complaintSummaryTable" class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Count</th>
+                                        <th>Avg Resolution (Days)</th>
+                                        <th>Date Range</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="complaintSummaryBody">
+                                    <tr>
+                                        <td colspan="4" class="loading">Loading complaint summary...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-card">
+                    <div class="report-header">
+                        <h4><i class="fas fa-users-cog"></i> Staff Performance (View)</h4>
+                        <span class="view-badge">SQL View</span>
+                    </div>
+                    <div class="report-content">
+                        <div class="table-container">
+                            <table id="staffPerformanceTable" class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Staff Name</th>
+                                        <th>Department</th>
+                                        <th>Active</th>
+                                        <th>Resolved</th>
+                                        <th>Total</th>
+                                        <th>Avg Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="staffPerformanceBody">
+                                    <tr>
+                                        <td colspan="6" class="loading">Loading staff performance...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="views-info">
+                <div class="info-card">
+                    <h5><i class="fas fa-info-circle"></i> About Database Views</h5>
+                    <p>These reports are powered by SQL database views that provide real-time aggregated data:</p>
+                    <ul>
+                        <li><strong>complaint_summary_view</strong> - Aggregates complaints by status with resolution metrics</li>
+                        <li><strong>staff_workload_view</strong> - Shows staff performance and workload distribution</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+<section class="feedback-section">
+  <div class="section-header">
+    <h3><i class="fas fa-comments"></i> Citizen Feedback</h3>
+    <button class="action-btn secondary" id="refreshFeedbackBtn">
+      <i class="fas fa-sync-alt"></i> Refresh
+    </button>
+  </div>
+  
+  <div class="feedback-container">
+    <div class="table-container">
+      <table id="feedbackTable" class="report-table">
+        <thead>
+          <tr>
+            <th>Complaint</th>
+            <th>Citizen</th>
+            <th>Rating</th>
+            <th>Feedback</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="feedbackTableBody">
+          <tr>
+            <td colspan="5" class="loading">Loading feedback...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
     </section>
 
-    <!-- System Logs -->
     <section class="system-logs">
       <div class="logs-card">
         <div class="section-header">
@@ -253,13 +347,11 @@
           <span class="badge" id="logsBadge">0 today</span>
         </div>
         <div class="logs-list" id="logsList">
-          <!-- Logs will be loaded here -->
-        </div>
+          </div>
       </div>
     </section>
   </main>
 
-  <!-- Complaint Details Modal -->
   <div class="modal" id="complaintModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -267,8 +359,7 @@
         <button class="close-btn" id="closeModalBtn">&times;</button>
       </div>
       <div class="modal-body" id="modalBody">
-        <!-- Complaint details will be loaded here -->
-      </div>
+        </div>
       <div class="modal-footer">
         <button class="modal-btn secondary" id="closeModalBtn2">Close</button>
         <button class="modal-btn primary" id="assignFromModalBtn">Assign to Staff</button>
@@ -276,7 +367,6 @@
     </div>
   </div>
 
-  <!-- Add Department Modal -->
   <div class="modal" id="departmentModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -302,7 +392,6 @@
     </div>
   </div>
 
-  <!-- Add Staff Modal -->
   <div class="modal" id="staffModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -320,13 +409,9 @@
             <input type="email" id="staffEmail" name="staffEmail" required placeholder="Enter email address">
           </div>
           <div class="form-group">
-            <label for="staffDepartment">Department *</label>
-            <select id="staffDepartment" name="staffDepartment" required>
-              <option value="">Select department</option>
-              <option value="Water Management">Water Management</option>
-              <option value="Road Maintenance">Road Maintenance</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Sanitation">Sanitation</option>
+            <label for="staffDepartmentModal">Department *</label>
+            <select id="staffDepartmentModal" name="staffDepartmentModal" required>
+                <option value="">Select department</option>
             </select>
           </div>
         </form>
