@@ -165,93 +165,142 @@ router.put('/complaints/:id/assign', (req, res) => {
         
         const staffId = staffResults[0].user_id;
         
-        // Update the complaint status and priority
-        const updateComplaintQuery = `
-            UPDATE Complaints 
-            SET status = 'In Progress', priority = ?, updated_at = NOW()
-            WHERE complaint_id = ?
+        // Check current workload before assignment
+        const workloadCheckQuery = `
+            SELECT COUNT(*) as active_count
+            FROM Staff_Assignments 
+            WHERE staff_id = ? AND status_update != 'Resolved'
         `;
         
-        pool.query(updateComplaintQuery, [priority, complaintId], (err, updateResult) => {
+        pool.query(workloadCheckQuery, [staffId], (err, workloadResult) => {
             if (err) {
-                console.error('Error updating complaint status:', err);
-                return res.status(500).json({ error: 'Error updating complaint status: ' + err.message });
+                console.error('Error checking workload:', err);
+                return res.status(500).json({ error: 'Error checking staff workload' });
             }
             
-            if (updateResult.affectedRows === 0) {
-                return res.status(404).json({ error: 'Complaint not found' });
+            const currentWorkload = workloadResult[0].active_count;
+            console.log(`Staff ${assignedStaff} currently has ${currentWorkload} active assignments`);
+            
+            // Provide detailed response based on workload
+            if (currentWorkload >= 3) {
+                return res.status(409).json({ 
+                    error: `Assignment Failed: Staff member "${assignedStaff}" has reached maximum capacity`,
+                    workloadExceeded: true,
+                    details: {
+                        staffName: assignedStaff,
+                        currentWorkload: currentWorkload,
+                        maxCapacity: 3,
+                        suggestion: 'Please select a different staff member or wait for them to resolve some cases'
+                    }
+                });
             }
             
-            // Check if assignment already exists
-            const checkAssignmentQuery = 'SELECT * FROM Staff_Assignments WHERE complaint_id = ?';
+            // Proceed with assignment if under capacity
+            proceedWithAssignment();
+        });
+        
+        function proceedWithAssignment() {
+            // Update the complaint status and priority
+            const updateComplaintQuery = `
+                UPDATE Complaints 
+                SET status = 'In Progress', priority = ?, updated_at = NOW()
+                WHERE complaint_id = ?
+            `;
             
-            pool.query(checkAssignmentQuery, [complaintId], (err, existingAssignments) => {
+            pool.query(updateComplaintQuery, [priority, complaintId], (err, updateResult) => {
                 if (err) {
-                    console.error('Error checking existing assignments:', err);
-                    return res.status(500).json({ error: 'Error checking assignments: ' + err.message });
+                    console.error('Error updating complaint status:', err);
+                    return res.status(500).json({ error: 'Error updating complaint status: ' + err.message });
                 }
                 
-                let assignmentQuery;
-                let queryParams;
-                
-                if (existingAssignments.length > 0) {
-                    // Update existing assignment
-                    assignmentQuery = `
-                        UPDATE Staff_Assignments 
-                        SET staff_id = ?, department = ?, assigned_at = NOW(), 
-                            progress_notes = ?, status_update = 'In Progress'
-                        WHERE complaint_id = ?
-                    `;
-                    queryParams = [staffId, department, notes || '', complaintId];
-                } else {
-                    // Insert new assignment
-                    assignmentQuery = `
-                        INSERT INTO Staff_Assignments 
-                        (complaint_id, staff_id, department, assigned_at, progress_notes, status_update) 
-                        VALUES (?, ?, ?, NOW(), ?, 'In Progress')
-                    `;
-                    queryParams = [complaintId, staffId, department, notes || ''];
+                if (updateResult.affectedRows === 0) {
+                    return res.status(404).json({ error: 'Complaint not found' });
                 }
                 
-                pool.query(assignmentQuery, queryParams, (err, assignmentResult) => {
+                // Check if assignment already exists
+                const checkAssignmentQuery = 'SELECT * FROM Staff_Assignments WHERE complaint_id = ?';
+                
+                pool.query(checkAssignmentQuery, [complaintId], (err, existingAssignments) => {
                     if (err) {
-                        console.error('Error with assignment operation:', err);
-                        return res.status(500).json({ error: 'Error with assignment: ' + err.message });
+                        console.error('Error checking existing assignments:', err);
+                        return res.status(500).json({ error: 'Error checking assignments: ' + err.message });
                     }
                     
-                    // Insert status history record
-                    const statusHistoryQuery = `
-                        INSERT INTO Complaint_Status_History 
-                        (complaint_id, staff_id, status, updated_by, updated_at)
-                        VALUES (?, ?, 'In Progress', ?, NOW())
-                    `;
+                    let assignmentQuery;
+                    let queryParams;
                     
-                    pool.query(statusHistoryQuery, [complaintId, staffId, staffId], (err, historyResult) => {
+                    if (existingAssignments.length > 0) {
+                        // Update existing assignment
+                        assignmentQuery = `
+                            UPDATE Staff_Assignments 
+                            SET staff_id = ?, department = ?, assigned_at = NOW(), 
+                                progress_notes = ?, status_update = 'In Progress'
+                            WHERE complaint_id = ?
+                        `;
+                        queryParams = [staffId, department, notes || '', complaintId];
+                    } else {
+                        // Insert new assignment
+                        assignmentQuery = `
+                            INSERT INTO Staff_Assignments 
+                            (complaint_id, staff_id, department, assigned_at, progress_notes, status_update) 
+                            VALUES (?, ?, ?, NOW(), ?, 'In Progress')
+                        `;
+                        queryParams = [complaintId, staffId, department, notes || ''];
+                    }
+                    
+                    pool.query(assignmentQuery, queryParams, (err, assignmentResult) => {
                         if (err) {
-                            console.error('Error inserting status history:', err);
-                            // Don't fail the whole operation for history logging
-                            console.log('Status history failed, but assignment succeeded');
+                            // Handle trigger error specifically
+                            if (err.message && err.message.includes('maximum workload capacity')) {
+                                return res.status(409).json({ 
+                                    error: `Assignment blocked: ${assignedStaff} has reached maximum workload capacity`,
+                                    workloadExceeded: true,
+                                    details: {
+                                        staffName: assignedStaff,
+                                        reason: 'Database workload limit trigger activated',
+                                        suggestion: 'Please select a different staff member'
+                                    }
+                                });
+                            }
+                            
+                            console.error('Error with assignment operation:', err);
+                            return res.status(500).json({ error: 'Error with assignment: ' + err.message });
                         }
                         
-                        console.log('Complaint', complaintId, 'assigned successfully to', assignedStaff);
-                        res.json({ 
-                            success: true, 
-                            message: `Complaint #${complaintId} assigned successfully to ${assignedStaff}`,
-                            assignment: {
-                                complaintId,
-                                staffId,
-                                assignedStaff,
-                                department,
-                                priority,
-                                status: 'In Progress'
+                        // Insert status history record
+                        const statusHistoryQuery = `
+                            INSERT INTO Complaint_Status_History 
+                            (complaint_id, staff_id, status, updated_by, updated_at)
+                            VALUES (?, ?, 'In Progress', ?, NOW())
+                        `;
+                        
+                        pool.query(statusHistoryQuery, [complaintId, staffId, staffId], (err, historyResult) => {
+                            if (err) {
+                                console.error('Error inserting status history:', err);
                             }
+                            
+                            console.log('Complaint', complaintId, 'assigned successfully to', assignedStaff);
+                            res.json({ 
+                                success: true, 
+                                message: `Complaint #${complaintId} assigned successfully to ${assignedStaff}`,
+                                assignment: {
+                                    complaintId,
+                                    staffId,
+                                    assignedStaff,
+                                    department,
+                                    priority,
+                                    status: 'In Progress'
+                                }
+                            });
                         });
                     });
                 });
             });
-        });
+        }
     });
 });
+
+
 // Add this new route to the end of your admin.js file, before `module.exports = router;`
 router.get('/departments', (req, res) => {
     console.log('=== ADMIN DEPARTMENTS FETCH ===');
@@ -392,6 +441,38 @@ router.get('/staff/:staffId/workload', (req, res) => {
             complaintIds: workload.complaint_ids ? workload.complaint_ids.split(',') : [],
             complaintTitles: workload.complaint_titles || 'No active assignments'
         });
+    });
+});
+
+// Get all feedback for admin dashboard
+router.get('/feedback', (req, res) => {
+    console.log('=== ADMIN FEEDBACK FETCH ===');
+    
+    const query = `
+        SELECT 
+            f.feedback_id,
+            f.complaint_id,
+            f.rating,
+            f.comments as comment,
+            f.created_at,
+            c.title as complaint_title,
+            c.status as complaint_status,
+            u.name as citizen_name,
+            u.email as citizen_email
+        FROM Feedback f
+        JOIN Complaints c ON f.complaint_id = c.complaint_id
+        JOIN Users u ON f.user_id = u.user_id
+        ORDER BY f.created_at DESC
+    `;
+
+    pool.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching feedback:', err);
+            return res.status(500).json({ error: 'Error fetching feedback: ' + err.message });
+        }
+
+        console.log('Found', results.length, 'feedback entries');
+        res.json(results);
     });
 });
 

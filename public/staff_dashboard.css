@@ -1,7 +1,7 @@
 /* Base Styles - Same as citizen dashboard */
 :root {
-  --primary: #2563eb;
-  --primary-dark: #3b5dce;
+  --primary: #095863f6;
+  --primary-dark: #0ea099;
   --secondary: #e5e7eb;
   --success: #10b981;
   --warning: #f59e0b;
@@ -134,7 +134,7 @@ body {
 
 /* Welcome Banner - Staff specific gradient */
 .welcome-banner {
-  background: linear-gradient(135deg, #1e40af 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, #05423e 0%, var(--primary-dark) 100%);
   color: var(--white);
   padding: 1.5rem;
   border-radius: var(--radius);

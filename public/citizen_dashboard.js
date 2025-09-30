@@ -1,4 +1,4 @@
-// FIXED VERSION - citizen_dashboard.js with proper session handling
+// UPDATED VERSION - citizen_dashboard.js with complaint tracking modal
 
 // DOM Elements
 const newComplaintBtn = document.getElementById('newComplaintBtn');
@@ -29,6 +29,19 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const closeModalBtn2 = document.getElementById('closeModalBtn2');
 const modalTitle = document.getElementById('modalTitle');
 const modalBody = document.getElementById('modalBody');
+// Feedback modal elements
+const feedbackModal = document.getElementById('feedbackModal');
+const closeFeedbackModalBtn = document.getElementById('closeFeedbackModalBtn');
+const feedbackModalTitle = document.getElementById('feedbackModalTitle');
+const feedbackComplaintInfo = document.getElementById('feedbackComplaintInfo');
+const feedbackForm = document.getElementById('feedbackForm');
+const starRating = document.getElementById('starRating');
+const feedbackRating = document.getElementById('feedbackRating');
+const feedbackComment = document.getElementById('feedbackComment');
+const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
+const submitFeedbackBtn = document.getElementById('submitFeedbackBtn');
+
+let currentFeedbackComplaintId = null;
 
 // Mock location data (keeping existing functionality)
 const locationData = {
@@ -68,7 +81,6 @@ let notifications = [
 let currentUser = null;
 
 // FIXED: Improved login check with retry mechanism
-// FIXED: Improved login check without hardcoded fallback
 function checkLogin() {
   console.log('=== CHECKING LOGIN STATUS ===');
   
@@ -358,21 +370,26 @@ function renderComplaintsTable() {
   }
   
   complaintsTableBody.innerHTML = filteredComplaints.map(complaint => `
-    <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
-      <td>#${complaint.id}</td>
-      <td><strong>${complaint.title}</strong></td>
-      <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
-      <td>${complaint.dept}</td>
-      <td>${complaint.zone} - ${complaint.ward} - ${complaint.areaName}</td>
-      <td><span class="priority-${complaint.priority.toLowerCase()}">${complaint.priority}</span></td>
-      <td>${complaint.lastUpdated}</td>
-    </tr>
-  `).join('');
+  <tr onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
+    <td>#${complaint.id}</td>
+    <td>
+      <strong>${complaint.title}</strong>
+      ${complaint.status === 'Resolved' ? 
+        `<button class="feedback-btn" onclick="event.stopPropagation(); showFeedbackForm(${complaint.id})" title="Give Feedback">
+          <i class="fas fa-comment-dots"></i>
+        </button>` : ''}
+    </td>
+    <td><span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></td>
+    <td>${complaint.dept}</td>
+    <td>${complaint.zone} - ${complaint.ward} - ${complaint.areaName}</td>
+    <td><span class="priority-${complaint.priority.toLowerCase()}">${complaint.priority}</span></td>
+    <td>${complaint.lastUpdated}</td>
+  </tr>
+`).join('');
   
   console.log('Complaints table rendered successfully');
 }
 
-// Rest of the functions remain the same...
 function renderNotifications() {
   const unreadCount = notifications.filter(n => !n.read).length;
   if (notificationBadge) {
@@ -449,6 +466,311 @@ function viewComplaintDetails(id) {
       <div class="complaint-detail">
         <h4>Last Updated</h4>
         <p>${complaint.lastUpdated}</p>
+      </div>
+    `;
+  }
+  
+  if (complaintModal) {
+    complaintModal.classList.add('show');
+  }
+}
+
+// Show feedback form for resolved complaints
+// Show feedback form for resolved complaints
+async function showFeedbackForm(complaintId) {
+    const complaint = complaints.find(c => c.id === complaintId);
+    if (!complaint) return;
+    
+    if (complaint.status !== 'Resolved') {
+        showErrorNotification('Feedback Not Available', 'You can only provide feedback for resolved complaints.');
+        return;
+    }
+    
+    // Check if feedback already exists
+    try {
+        const response = await fetch(`/api/complaints/${complaintId}/feedback/${currentUser.id}`);
+        if (response.ok) {
+            const existingFeedback = await response.json();
+            // Show nice info notification instead of alert
+            showFeedbackAlreadySubmittedNotification(complaintId, existingFeedback);
+            return;
+        }
+    } catch (error) {
+        // No existing feedback, continue
+    }
+    
+    currentFeedbackComplaintId = complaintId;
+    
+    if (feedbackModalTitle) {
+        feedbackModalTitle.textContent = `Feedback for Complaint #${complaintId}`;
+    }
+    
+    if (feedbackComplaintInfo) {
+        feedbackComplaintInfo.innerHTML = `
+            <div class="feedback-complaint-info">
+                <h4>${complaint.title}</h4>
+                <p><strong>Status:</strong> <span class="status-badge resolved">${complaint.status}</span></p>
+                <p><strong>Department:</strong> ${complaint.dept}</p>
+                <p><strong>Resolution Date:</strong> ${complaint.lastUpdated}</p>
+            </div>
+        `;
+    }
+    
+    // Reset form
+    if (feedbackForm) feedbackForm.reset();
+    if (feedbackRating) feedbackRating.value = '';
+    resetStarRating();
+    clearFeedbackErrors();
+    
+    if (feedbackModal) {
+        feedbackModal.classList.add('show');
+    }
+}
+
+// Handle star rating clicks
+function handleStarRating() {
+    if (!starRating) return;
+    
+    const stars = starRating.querySelectorAll('.star');
+    
+    stars.forEach((star, index) => {
+        star.addEventListener('click', () => {
+            const rating = parseInt(star.dataset.rating);
+            feedbackRating.value = rating;
+            
+            // Update visual state
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.classList.add('selected');
+                } else {
+                    s.classList.remove('selected');
+                }
+            });
+        });
+        
+        star.addEventListener('mouseover', () => {
+            const rating = parseInt(star.dataset.rating);
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.classList.add('hover');
+                } else {
+                    s.classList.remove('hover');
+                }
+            });
+        });
+    });
+    
+    starRating.addEventListener('mouseleave', () => {
+        stars.forEach(s => s.classList.remove('hover'));
+    });
+}
+
+// Reset star rating visual state
+function resetStarRating() {
+    if (!starRating) return;
+    const stars = starRating.querySelectorAll('.star');
+    stars.forEach(star => {
+        star.classList.remove('selected', 'hover');
+    });
+}
+
+// Validate feedback form
+function validateFeedbackForm() {
+    let isValid = true;
+    clearFeedbackErrors();
+    
+    if (!feedbackRating.value) {
+        const ratingError = document.getElementById('ratingError');
+        if (ratingError) ratingError.textContent = 'Please select a rating';
+        isValid = false;
+    }
+    
+    if (!feedbackComment.value.trim()) {
+        const commentError = document.getElementById('commentError');
+        if (commentError) commentError.textContent = 'Please provide your feedback';
+        feedbackComment.classList.add('error');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+// Clear feedback form errors
+function clearFeedbackErrors() {
+    document.querySelectorAll('#feedbackModal .error-message').forEach(el => {
+        el.textContent = '';
+    });
+    document.querySelectorAll('#feedbackModal input, #feedbackModal textarea').forEach(el => {
+        el.classList.remove('error');
+    });
+}
+
+// Submit feedback
+// Submit feedback
+async function submitFeedback() {
+    if (!validateFeedbackForm() || !currentFeedbackComplaintId || !currentUser) return;
+    
+    try {
+        submitFeedbackBtn.disabled = true;
+        submitFeedbackBtn.textContent = 'Submitting...';
+        
+        const feedbackData = {
+            userId: currentUser.id,
+            rating: parseInt(feedbackRating.value),
+            comment: feedbackComment.value.trim()
+        };
+        
+        const response = await fetch(`/api/complaints/${currentFeedbackComplaintId}/feedback`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(feedbackData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Show nice success notification instead of alert
+            showFeedbackSuccessNotification();
+            closeFeedbackModal();
+            
+            // Add notification
+            notifications.unshift({
+                id: notifications.length + 1,
+                date: new Date().toISOString().split('T')[0],
+                message: `Feedback submitted for complaint #${currentFeedbackComplaintId}`,
+                read: false
+            });
+            renderNotifications();
+            
+        } else {
+            showErrorNotification('Feedback Error', result.error || 'Failed to submit feedback');
+        }
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        showErrorNotification('Network Error', 'Please check your connection and try again.');
+    } finally {
+        submitFeedbackBtn.disabled = false;
+        submitFeedbackBtn.textContent = 'Submit Feedback';
+    }
+}
+
+// Close feedback modal
+function closeFeedbackModal() {
+    if (feedbackModal) {
+        feedbackModal.classList.remove('show');
+    }
+    currentFeedbackComplaintId = null;
+    if (feedbackForm) feedbackForm.reset();
+    resetStarRating();
+    clearFeedbackErrors();
+}
+
+// NEW: Improved tracking function with modal interface
+function trackComplaints() {
+  const total = complaints.length;
+  const pending = complaints.filter(c => c.status === 'Pending').length;
+  const inProgress = complaints.filter(c => c.status === 'In Progress').length;
+  const resolved = complaints.filter(c => c.status === 'Resolved').length;
+  const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  
+  // Calculate average resolution time (mock data for demonstration)
+  const avgResolutionTime = resolved > 0 ? Math.round(Math.random() * 10 + 5) : 0;
+  
+  // Get recent activity
+  const recentComplaints = complaints
+    .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
+    .slice(0, 5);
+  
+  if (modalTitle) modalTitle.textContent = 'Complaint Tracking Summary';
+  
+  if (modalBody) {
+    modalBody.innerHTML = `
+      <div class="tracking-summary">
+        <div class="tracking-header">
+          <h4><i class="fas fa-chart-bar"></i> Your Complaint Statistics</h4>
+          <p class="tracking-subtitle">Track all your submitted complaints and their current status</p>
+        </div>
+        
+        <div class="tracking-stats">
+          <div class="tracking-stat-card">
+            <div class="stat-number">${total}</div>
+            <div class="stat-label">Total Complaints</div>
+            <i class="fas fa-file-alt stat-icon"></i>
+          </div>
+          
+          <div class="tracking-stat-card pending">
+            <div class="stat-number">${pending}</div>
+            <div class="stat-label">Pending</div>
+            <i class="fas fa-clock stat-icon"></i>
+          </div>
+          
+          <div class="tracking-stat-card in-progress">
+            <div class="stat-number">${inProgress}</div>
+            <div class="stat-label">In Progress</div>
+            <i class="fas fa-sync-alt stat-icon"></i>
+          </div>
+          
+          <div class="tracking-stat-card resolved">
+            <div class="stat-number">${resolved}</div>
+            <div class="stat-label">Resolved</div>
+            <i class="fas fa-check-circle stat-icon"></i>
+          </div>
+        </div>
+        
+        <div class="tracking-metrics">
+          <div class="metric-card">
+            <h5><i class="fas fa-percentage"></i> Resolution Rate</h5>
+            <div class="metric-value">${resolutionRate}%</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${resolutionRate}%;"></div>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <h5><i class="fas fa-stopwatch"></i> Avg. Resolution Time</h5>
+            <div class="metric-value">${avgResolutionTime} days</div>
+            <div class="metric-note">Average time to resolve complaints</div>
+          </div>
+        </div>
+        
+        ${total > 0 ? `
+        <div class="recent-activity">
+          <h5><i class="fas fa-history"></i> Recent Activity</h5>
+          <div class="activity-list">
+            ${recentComplaints.map(complaint => `
+              <div class="activity-item" onclick="viewComplaintDetails(${complaint.id})" style="cursor: pointer;">
+                <div class="activity-icon">
+                  <span class="status-badge ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-title">${complaint.title}</div>
+                  <div class="activity-meta">#${complaint.id} • ${complaint.dept} • ${complaint.lastUpdated}</div>
+                </div>
+                <i class="fas fa-arrow-right activity-arrow"></i>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : `
+        <div class="no-complaints">
+          <i class="fas fa-clipboard-list"></i>
+          <h5>No complaints yet</h5>
+          <p>You haven't submitted any complaints yet. Click "Submit New Complaint" to get started!</p>
+        </div>
+        `}
+        
+        <div class="tracking-actions">
+          <button class="tracking-action-btn primary" onclick="closeModal(); showComplaintForm();">
+            <i class="fas fa-plus"></i> Submit New Complaint
+          </button>
+          ${total > 0 ? `
+          <button class="tracking-action-btn secondary" onclick="closeModal(); document.querySelector('.complaint-history').scrollIntoView({behavior: 'smooth'});">
+            <i class="fas fa-list"></i> View All Complaints
+          </button>
+          ` : ''}
+        </div>
       </div>
     `;
   }
@@ -548,6 +870,82 @@ function clearFormErrors() {
   document.querySelectorAll('input, select, textarea').forEach(el => {
     el.classList.remove('error');
   });
+}
+// Show feedback already submitted notification
+function showFeedbackAlreadySubmittedNotification(complaintId, existingFeedback) {
+    const notification = document.createElement('div');
+    notification.className = 'info-notification';
+    
+    const submissionDate = new Date(existingFeedback.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    
+    const stars = '★'.repeat(existingFeedback.rating) + '☆'.repeat(5 - existingFeedback.rating);
+    
+    notification.innerHTML = `
+        <div class="info-notification-content">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-notification-text">
+                <div class="info-notification-title">Feedback Already Submitted</div>
+                <div class="info-notification-message">
+                    You already submitted feedback for complaint #${complaintId} on ${submissionDate}.<br>
+                    <strong>Your Rating:</strong> ${stars} (${existingFeedback.rating}/5)
+                </div>
+            </div>
+            <button class="info-notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 6 seconds (longer to read the rating info)
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 6000);
+}
+
+// Show general info notification
+function showInfoNotification(title, message) {
+    const notification = document.createElement('div');
+    notification.className = 'info-notification';
+    
+    notification.innerHTML = `
+        <div class="info-notification-content">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-notification-text">
+                <div class="info-notification-title">${title}</div>
+                <div class="info-notification-message">${message}</div>
+            </div>
+            <button class="info-notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
 }
 
 function validateForm() {
@@ -671,7 +1069,7 @@ async function handleComplaintSubmit(e) {
       hideComplaintForm();
       
       // Show success message
-      alert(`Complaint submitted successfully!\n\nTracking ID: #${result.complaint_id}`);
+showSuccessModal(complaintData, result.complaint_id);
     } else {
       alert('Error: ' + (result.error || 'Failed to submit complaint'));
     }
@@ -686,12 +1084,113 @@ async function handleComplaintSubmit(e) {
   }
 }
 
-function trackComplaints() {
-  const pending = complaints.filter(c => c.status === 'Pending').length;
-  const inProgress = complaints.filter(c => c.status === 'In Progress').length;
-  const resolved = complaints.filter(c => c.status === 'Resolved').length;
-  
-  alert(`Complaint Tracking Summary:\n\nTotal: ${complaints.length}\nPending: ${pending}\nIn Progress: ${inProgress}\nResolved: ${resolved}`);
+// Show feedback success notification
+function showFeedbackSuccessNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    
+    notification.innerHTML = `
+        <div class="success-notification-content">
+            <i class="fas fa-check-circle"></i>
+            <div class="success-notification-text">
+                <div class="success-notification-title">Feedback Submitted Successfully!</div>
+                <div class="success-notification-message">
+                    Thank you for your valuable feedback on complaint #${currentFeedbackComplaintId}. 
+                    Your input helps us improve our services.
+                </div>
+            </div>
+            <button class="success-notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// Show error notification
+function showErrorNotification(title, message) {
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+        z-index: 10000;
+        animation: slideInRight 0.4s ease-out;
+        max-width: 400px;
+        border-left: 4px solid #991b1b;
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 20px; color: #fecaca;"></i>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${title}</div>
+                <div style="font-size: 13px; color: #fecaca; line-height: 1.4;">${message}</div>
+            </div>
+            <button onclick="closeNotification(this)" style="background: none; border: none; color: white; font-size: 16px; cursor: pointer; opacity: 0.7;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 6 seconds (longer for error messages)
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 6000);
+}
+
+// Close notification manually
+function closeNotification(button) {
+    const notification = button.closest('.success-notification, .error-notification');
+    if (notification) {
+        notification.classList.add('slide-out');
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }
+}
+
+// Close notification manually
+function closeNotification(button) {
+    const notification = button.closest('.success-notification, .error-notification, .info-notification');
+    if (notification) {
+        notification.classList.add('slide-out');
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }
 }
 
 function logout() {
@@ -701,6 +1200,92 @@ function logout() {
     window.location.href = '/signin.html';
   }
 }
+
+// Success Modal Functions
+function showSuccessModal(complaintData, trackingId) {
+  // Update modal content with real data
+  document.getElementById('modalTrackingId').textContent = `#${trackingId}`;
+  document.getElementById('modalComplaintTitle').textContent = complaintData.title;
+  document.getElementById('modalDepartment').textContent = mapProblemTypeToDept(complaintData.problemType);
+  document.getElementById('modalPriority').textContent = 'Medium';
+  
+  // Calculate expected response time based on problem type
+  const expectedResponse = getExpectedResponse(complaintData.problemType);
+  document.getElementById('modalExpectedResponse').textContent = expectedResponse;
+  
+  // Show modal with proper scroll handling
+  const modal = document.getElementById('successModal');
+  modal.style.display = 'flex';
+  
+  // Prevent background scroll but allow modal scroll
+  document.body.style.overflow = 'hidden';
+  document.body.style.paddingRight = getScrollbarWidth() + 'px'; // Prevent layout shift
+  
+  // Focus management for accessibility
+  setTimeout(() => {
+    const closeButton = modal.querySelector('.close-button');
+    if (closeButton) closeButton.focus();
+  }, 600);
+}
+function closeSuccessModal() {
+  const modal = document.getElementById('successModal');
+  const modalContent = modal.querySelector('.success-modal');
+  
+  // Add closing animation
+  if (modalContent) {
+    modalContent.style.transform = 'scale(0.9) translateY(30px)';
+    modalContent.style.opacity = '0';
+  }
+  
+  // Hide modal after animation and restore scrolling
+  setTimeout(() => {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = ''; // Remove scrollbar compensation
+    
+    // Reset transform for next use
+    if (modalContent) {
+      modalContent.style.transform = '';
+      modalContent.style.opacity = '';
+    }
+  }, 300);
+}
+function trackComplaintFromModal() {
+  closeSuccessModal();
+  trackComplaints(); // This calls your existing track function
+}
+
+function getExpectedResponse(problemType) {
+  const urgentTypes = ['water-leak', 'power-outage', 'sewage-overflow'];
+  const normalTypes = ['pothole', 'street-light', 'garbage-collection'];
+  
+  if (urgentTypes.includes(problemType)) {
+    return '1-2 business days';
+  } else if (normalTypes.includes(problemType)) {
+    return '3-5 business days';
+  } else {
+    return '2-3 business days';
+  }
+}
+
+// Helper function to get scrollbar width and prevent layout shift
+function getScrollbarWidth() {
+  const outer = document.createElement('div');
+  outer.style.visibility = 'hidden';
+  outer.style.overflow = 'scroll';
+  outer.style.msOverflowStyle = 'scrollbar';
+  document.body.appendChild(outer);
+  
+  const inner = document.createElement('div');
+  outer.appendChild(inner);
+  
+  const scrollbarWidth = (outer.offsetWidth - inner.offsetWidth);
+  outer.parentNode.removeChild(outer);
+  
+  return scrollbarWidth;
+}
+
+
 
 // Event Listeners
 if (newComplaintBtn) newComplaintBtn.addEventListener('click', showComplaintForm);
@@ -731,6 +1316,40 @@ if (logoutBtn) logoutBtn.addEventListener('click', logout);
 if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
 if (closeModalBtn2) closeModalBtn2.addEventListener('click', closeModal);
 
+// Feedback modal event listeners
+if (closeFeedbackModalBtn) closeFeedbackModalBtn.addEventListener('click', closeFeedbackModal);
+if (cancelFeedbackBtn) cancelFeedbackBtn.addEventListener('click', closeFeedbackModal);
+if (submitFeedbackBtn) submitFeedbackBtn.addEventListener('click', submitFeedback);
+
+// Initialize star rating functionality
+handleStarRating();
+
+// Click outside modal to close feedback modal
+if (feedbackModal) {
+    feedbackModal.addEventListener('click', function(e) {
+        if (e.target === feedbackModal) {
+            closeFeedbackModal();
+        }
+    });
+}
+// Success modal event listeners
+   document.getElementById('successModal').addEventListener('click', function(e) {
+     if (e.target === this) {
+       closeSuccessModal();
+     }
+   });
+
+   // Close modal with Escape key
+   document.addEventListener('keydown', function(e) {
+     if (e.key === 'Escape' && document.getElementById('successModal').style.display === 'flex') {
+       closeSuccessModal();
+     }
+   });
+
+// Make feedback functions globally accessible
+window.showFeedbackForm = showFeedbackForm;
+window.submitFeedback = submitFeedback;
+
 // Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', initDashboard);
 
@@ -739,3 +1358,19 @@ window.loadUserComplaints = loadUserComplaints;
 window.updateDashboardStats = updateDashboardStats;
 window.renderComplaintsTable = renderComplaintsTable;
 window.checkLogin = checkLogin;
+window.trackComplaints = trackComplaints;
+
+// Make notification functions globally accessible
+window.showFeedbackSuccessNotification = showFeedbackSuccessNotification;
+window.showErrorNotification = showErrorNotification;
+window.closeNotification = closeNotification;
+// Make notification functions globally accessible
+window.showFeedbackSuccessNotification = showFeedbackSuccessNotification;
+window.showErrorNotification = showErrorNotification;
+window.showInfoNotification = showInfoNotification;
+window.showFeedbackAlreadySubmittedNotification = showFeedbackAlreadySubmittedNotification;
+window.closeNotification = closeNotification;
+// Make functions globally accessible
+window.showSuccessModal = showSuccessModal;
+window.closeSuccessModal = closeSuccessModal;
+window.trackComplaintFromModal = trackComplaintFromModal;
